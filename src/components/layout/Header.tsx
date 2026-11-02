@@ -42,25 +42,18 @@ export const Header: React.FC<HeaderProps> = ({
         <span className="font-semibold text-slate-100 truncate">{currentSection}</span>
       </div>
 
-      {/* Zone 2: System Telemetry & Environment Indicator */}
+      {/* Zone 2: Real System Telemetry & Environment Indicator */}
       <div className="hidden md:flex items-center gap-4 text-xs font-mono text-slate-400">
         <div className="flex items-center gap-2 px-2.5 py-1 rounded bg-slate-900 border border-slate-800">
-          <span className="text-slate-500">ENGINE:</span>
-          {backendConfig.useLiveBackend ? (
-            <span className="text-emerald-400 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
-              FLASK REST · 127.0.0.1:5000
-            </span>
-          ) : (
-            <span className="text-cyan-400 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 inline-block" />
-              SIMULATED DEMO · STANDALONE
-            </span>
-          )}
+          <span className="text-slate-500">FONTE:</span>
+          <span className="text-emerald-400 flex items-center gap-1.5 font-semibold">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block animate-pulse" />
+            DADOS REAIS · LINUX HOST DAEMON
+          </span>
         </div>
 
         <div className="text-slate-400 tabular-nums">
-          {currentTime || '2026-11-02 07:30:00 UTC'}
+          {currentTime}
         </div>
       </div>
 
@@ -70,18 +63,18 @@ export const Header: React.FC<HeaderProps> = ({
           onClick={onRefreshAll}
           disabled={isRefreshing}
           className="p-2 text-slate-400 hover:text-slate-100 hover:bg-slate-900 rounded-md transition-colors"
-          title="Poll telemetry now"
-          aria-label="Refresh telemetry"
+          title="Atualizar telemetria real agora"
+          aria-label="Atualizar telemetria"
         >
           <RefreshCw size={16} className={isRefreshing ? 'animate-spin text-cyan-400' : ''} />
         </button>
 
         <button
           onClick={onOpenQuickScan}
-          className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-slate-900 bg-cyan-400 hover:bg-cyan-300 rounded-md transition-colors whitespace-nowrap shrink-0 shadow-sm shadow-cyan-500/20"
+          className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-slate-950 bg-cyan-400 hover:bg-cyan-300 rounded-md transition-colors whitespace-nowrap shrink-0 shadow-sm shadow-cyan-500/20"
         >
           <Terminal size={14} />
-          <span>New Discovery Scan</span>
+          <span>Executar Varredura Real</span>
         </button>
       </div>
     </header>

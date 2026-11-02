@@ -32,14 +32,14 @@ import { DeviceStatusBadge } from '../common/StatusBadge';
 interface NetworkMonitoringProps {
   serverMetrics: LocalServerMetrics;
   devices: NetworkDevice[];
+  timeSeriesData?: any[];
   onOpenDeviceDetail: (device: NetworkDevice) => void;
 }
-
-const timeSeriesData = GENERATE_TIME_SERIES();
 
 export const NetworkMonitoring: React.FC<NetworkMonitoringProps> = ({
   serverMetrics,
   devices,
+  timeSeriesData = [],
   onOpenDeviceDetail
 }) => {
   const [selectedInterface, setSelectedInterface] = useState<string>('eth0');

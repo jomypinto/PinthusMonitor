@@ -29,15 +29,15 @@ interface TrafficAnalysisProps {
   talkers: TrafficTalker[];
   protocols: ProtocolStat[];
   devices: NetworkDevice[];
+  timeSeriesData?: any[];
   onOpenDeviceDetail: (device: NetworkDevice) => void;
 }
-
-const timeSeriesData = GENERATE_TIME_SERIES();
 
 export const TrafficAnalysis: React.FC<TrafficAnalysisProps> = ({
   talkers,
   protocols,
   devices,
+  timeSeriesData = [],
   onOpenDeviceDetail
 }) => {
   const [protocolCategory, setProtocolCategory] = useState<string>('all');

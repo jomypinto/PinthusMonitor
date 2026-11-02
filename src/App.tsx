@@ -34,6 +34,7 @@ export default function App() {
   const [subnets, setSubnets] = useState<SubnetScanRange[]>([]);
   const [talkers, setTalkers] = useState<TrafficTalker[]>([]);
   const [protocols, setProtocols] = useState<ProtocolStat[]>([]);
+  const [timeSeriesData, setTimeSeriesData] = useState<any[]>([]);
   const [connectionLinks, setConnectionLinks] = useState<ConnectionLink[]>([]);
   const [backendConfig, setBackendConfig] = useState<BackendConfig>(nexusApi.getConfig());
   
@@ -60,6 +61,9 @@ export default function App() {
       setSubnets(subRes.data);
       setTalkers(trafRes.talkers);
       setProtocols(trafRes.protocols);
+      if (trafRes.timeSeries && trafRes.timeSeries.length > 0) {
+        setTimeSeriesData(trafRes.timeSeries);
+      }
       setConnectionLinks(linkRes);
     } catch (err) {
       console.error('Error fetching telemetry data', err);
@@ -139,6 +143,7 @@ export default function App() {
                 devices={devices}
                 serverMetrics={serverMetrics}
                 events={events}
+                timeSeriesData={timeSeriesData}
                 onNavigate={(sec) => setCurrentSection(sec)}
                 onOpenDeviceDetail={handleOpenDeviceDetail}
                 onOpenQuickScan={() => setCurrentSection('Network Discovery')}
@@ -167,6 +172,7 @@ export default function App() {
               <NetworkMonitoring
                 serverMetrics={serverMetrics}
                 devices={devices}
+                timeSeriesData={timeSeriesData}
                 onOpenDeviceDetail={handleOpenDeviceDetail}
               />
             )}
@@ -184,6 +190,7 @@ export default function App() {
                 talkers={talkers}
                 protocols={protocols}
                 devices={devices}
+                timeSeriesData={timeSeriesData}
                 onOpenDeviceDetail={handleOpenDeviceDetail}
               />
             )}

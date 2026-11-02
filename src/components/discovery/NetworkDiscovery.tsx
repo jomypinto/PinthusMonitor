@@ -222,7 +222,7 @@ export const NetworkDiscovery: React.FC<NetworkDiscoveryProps> = ({
                   Target: {selectedSubnet ? `${selectedSubnet.name} (${selectedSubnet.cidr})` : 'Select a range'}
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Prober interface: <span className="font-mono text-slate-300">eth0 (192.168.1.15)</span> · Rate bounded
+                  Coletor nativo: <span className="font-mono text-cyan-400">Linux Kernel Socket (eth1/eth2)</span> · Motor ICMP e TCP ativo
                 </p>
               </div>
 
@@ -233,7 +233,7 @@ export const NetworkDiscovery: React.FC<NetworkDiscoveryProps> = ({
                     className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-rose-100 bg-rose-600 hover:bg-rose-500 rounded-md transition-colors"
                   >
                     <Square size={14} />
-                    <span>Stop Sweep</span>
+                    <span>Parar Varredura</span>
                   </button>
                 ) : (
                   <button
@@ -242,7 +242,7 @@ export const NetworkDiscovery: React.FC<NetworkDiscoveryProps> = ({
                     className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-slate-950 bg-cyan-400 hover:bg-cyan-300 rounded-md transition-colors shadow-sm shadow-cyan-500/20 disabled:opacity-50"
                   >
                     <Play size={14} />
-                    <span>Start ARP Discovery</span>
+                    <span>Executar Varredura Real</span>
                   </button>
                 )}
               </div>

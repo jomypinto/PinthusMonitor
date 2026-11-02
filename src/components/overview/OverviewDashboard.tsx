@@ -35,17 +35,17 @@ interface OverviewDashboardProps {
   devices: NetworkDevice[];
   serverMetrics: LocalServerMetrics;
   events: NetworkEvent[];
+  timeSeriesData?: any[];
   onNavigate: (section: any) => void;
   onOpenDeviceDetail: (device: NetworkDevice) => void;
   onOpenQuickScan: () => void;
 }
 
-const timeSeriesData = GENERATE_TIME_SERIES();
-
 export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({
   devices,
   serverMetrics,
   events,
+  timeSeriesData = [],
   onNavigate,
   onOpenDeviceDetail,
   onOpenQuickScan
