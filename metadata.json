@@ -1,0 +1,6 @@
+{
+  "name": "NEXUS Network Monitor",
+  "description": "On-premises enterprise LAN infrastructure monitoring, asset discovery, and network telemetry console for system administrators.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
