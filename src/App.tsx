@@ -114,6 +114,7 @@ export default function App() {
         onSelectSection={(section) => setCurrentSection(section)}
         unacknowledgedAlertsCount={unacknowledgedAlertsCount}
         totalDevicesCount={devices.length}
+        serverMetrics={serverMetrics}
       />
 
       {/* Main Viewport Container */}

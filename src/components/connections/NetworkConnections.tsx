@@ -121,7 +121,7 @@ export const NetworkConnections: React.FC<NetworkConnectionsProps> = ({
                   <span className="font-mono text-cyan-400 font-bold">gw-core-01.lan</span>
                   <DeviceStatusBadge status="online" showIcon={false} />
                 </div>
-                <div className="text-[11px] font-mono text-slate-300">192.168.1.1 · Cisco ISR4431</div>
+                <div className="text-[11px] font-mono text-slate-300">192.168.0.1 · Cisco ISR4431</div>
                 <div className="text-[10px] text-slate-400 mt-1 font-mono">Default Route / WAN Ingress</div>
               </div>
               <div className="w-0.5 h-8 bg-cyan-500/60" />
@@ -138,7 +138,7 @@ export const NetworkConnections: React.FC<NetworkConnectionsProps> = ({
                   <span className="font-mono text-slate-100 font-bold">sw-core-stack01.lan</span>
                   <DeviceStatusBadge status="online" showIcon={false} />
                 </div>
-                <div className="text-[11px] font-mono text-slate-300">192.168.1.2 · Cisco Catalyst 3850 Stack</div>
+                <div className="text-[11px] font-mono text-slate-300">192.168.0.2 · Cisco Catalyst 3850 Stack</div>
                 <div className="text-[10px] text-slate-400 mt-1 font-mono">VLANs: 1 (Mgmt), 10 (Corp), 20 (DMZ), 50 (IoT)</div>
               </div>
               <div className="w-0.5 h-8 bg-slate-700" />
@@ -152,7 +152,7 @@ export const NetworkConnections: React.FC<NetworkConnectionsProps> = ({
               >
                 <div className="text-[10px] font-mono uppercase text-cyan-400 mb-1">Floor 1 Access Switch</div>
                 <div className="text-xs font-mono font-bold text-slate-200">sw-access-floor1.lan</div>
-                <div className="text-[11px] font-mono text-slate-400 mt-0.5">192.168.1.3 · UniFi 48 PoE</div>
+                <div className="text-[11px] font-mono text-slate-400 mt-0.5">192.168.0.3 · UniFi 48 PoE</div>
                 <div className="text-[10px] text-emerald-400 mt-1 font-mono">48 Ports · 1G Trunk Up</div>
               </div>
 
@@ -162,7 +162,7 @@ export const NetworkConnections: React.FC<NetworkConnectionsProps> = ({
               >
                 <div className="text-[10px] font-mono uppercase text-emerald-400 mb-1">Local Collector Host</div>
                 <div className="text-xs font-mono font-bold text-slate-200">nexus-monitor-node.lan</div>
-                <div className="text-[11px] font-mono text-slate-400 mt-0.5">192.168.1.15 · Debian 12</div>
+                <div className="text-[11px] font-mono text-slate-400 mt-0.5">192.168.0.13 · Debian 12</div>
                 <div className="text-[10px] text-emerald-400 mt-1 font-mono">NEXUS Daemon / Scapy Node</div>
               </div>
 
@@ -172,7 +172,7 @@ export const NetworkConnections: React.FC<NetworkConnectionsProps> = ({
               >
                 <div className="text-[10px] font-mono uppercase text-slate-400 mb-1">Domain & DNS</div>
                 <div className="text-xs font-mono font-bold text-slate-200">srv-dc-ad01.lan</div>
-                <div className="text-[11px] font-mono text-slate-400 mt-0.5">192.168.1.10 · Win2022</div>
+                <div className="text-[11px] font-mono text-slate-400 mt-0.5">192.168.0.10 · Win2022</div>
                 <div className="text-[10px] text-slate-400 mt-1 font-mono">Active Directory / Port 53</div>
               </div>
 
@@ -182,7 +182,7 @@ export const NetworkConnections: React.FC<NetworkConnectionsProps> = ({
               >
                 <div className="text-[10px] font-mono uppercase text-slate-400 mb-1">Hypervisor Cluster</div>
                 <div className="text-xs font-mono font-bold text-slate-200">pve-cluster-node01.lan</div>
-                <div className="text-[11px] font-mono text-slate-400 mt-0.5">192.168.1.25 · Proxmox VE</div>
+                <div className="text-[11px] font-mono text-slate-400 mt-0.5">192.168.0.25 · Proxmox VE</div>
                 <div className="text-[10px] text-cyan-400 mt-1 font-mono">10GbE SFP+ Fiber Ingress</div>
               </div>
             </div>

@@ -2,6 +2,7 @@ import express from 'express';
 import { createServer as createViteServer } from 'vite';
 import os from 'os';
 import fs from 'fs';
+import path from 'path';
 import { exec, execSync } from 'child_process';
 import net from 'net';
 
@@ -696,17 +697,27 @@ app.all('/api/*', (req, res) => {
   res.status(404).json({ success: false, error: 'Endpoint not found', path: req.path });
 });
 
-// Start server with Vite middleware in development
+// Start server: Vite middleware in development, pre-built static dist/ in production
 async function startServer() {
-  const vite = await createViteServer({
-    server: {
-      middlewareMode: true,
-      hmr: false
-    },
-    appType: 'spa'
-  });
+  const isProduction = process.env.NODE_ENV === 'production';
 
-  app.use(vite.middlewares);
+  if (isProduction && fs.existsSync('./dist')) {
+    console.log('[NEXUS] Running in PRODUCTION mode - serving static assets from ./dist');
+    app.use(express.static('./dist'));
+    app.get('*', (req, res) => {
+      res.sendFile(path.resolve('./dist/index.html'));
+    });
+  } else {
+    console.log('[NEXUS] Running in DEVELOPMENT mode - mounting Vite middlewares');
+    const vite = await createViteServer({
+      server: {
+        middlewareMode: true,
+        hmr: false
+      },
+      appType: 'spa'
+    });
+    app.use(vite.middlewares);
+  }
 
   const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
   app.listen(PORT, '0.0.0.0', () => {

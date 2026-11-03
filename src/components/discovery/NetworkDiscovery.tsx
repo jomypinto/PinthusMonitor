@@ -89,7 +89,7 @@ export const NetworkDiscovery: React.FC<NetworkDiscoveryProps> = ({
   const handleCreateSubnet = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSubnetCidr.includes('/')) {
-      alert('Please enter a valid CIDR notation (e.g. 192.168.1.0/24)');
+      alert('Please enter a valid CIDR notation (e.g. 192.168.0.0/24)');
       return;
     }
 

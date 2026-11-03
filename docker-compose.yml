@@ -1,0 +1,75 @@
+# ========================================================
+# NEXUS Network Monitor - Docker Compose Configuration
+# Designed for On-Premises Deployment on Private LAN
+# ========================================================
+
+version: '3.8'
+
+services:
+  nexus-monitor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nexus-monitor-app
+    restart: unless-stopped
+
+    # network_mode: "host" binds directly to the server's physical network stack,
+    # allowing real ICMP pings, ARP broadcast discovery on the LAN (e.g. eth0),
+    # and reading real host interface counters.
+    network_mode: "host"
+
+    cap_add:
+      - NET_RAW # Enables raw sockets for ICMP echo and ARP without root privileges
+
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+      - HOST=0.0.0.0
+      - NEXUS_AUTHORIZED_CIDRS=${NEXUS_AUTHORIZED_CIDRS:-192.168.0.0/24}
+      - NEXUS_DEFAULT_INTERFACE=${NEXUS_DEFAULT_INTERFACE:-eth0}
+      - NEXUS_MAX_SCAN_PPS=${NEXUS_MAX_SCAN_PPS:-100}
+      - NEXUS_PING_TIMEOUT_MS=${NEXUS_PING_TIMEOUT_MS:-1000}
+      - DB_ENABLED=${DB_ENABLED:-false}
+
+    volumes:
+      # Data persistence for device inventory and discovery states
+      - ./data:/app/data
+      # Log storage
+      - ./logs:/app/logs
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ========================================================
+  # FUTURE PERSISTENCE SERVICE: PostgreSQL Database (Phase 2)
+  # Uncomment when ready to activate database storage
+  # ========================================================
+  # nexus-db:
+  #   image: postgres:16-alpine
+  #   container_name: nexus-postgres
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_DB: ${DB_NAME:-nexus_db}
+  #     POSTGRES_USER: ${DB_USER:-nexus_admin}
+  #     POSTGRES_PASSWORD: ${DB_PASSWORD:-nexus_secure_password}
+  #   volumes:
+  #     - nexus-db-data:/var/lib/postgresql/data
+  #   ports:
+  #     - "127.0.0.1:5432:5432"
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-nexus_admin} -d ${DB_NAME:-nexus_db}"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #   logging:
+  #     driver: "json-file"
+  #     options:
+  #       max-size: "10m"
+  #       max-file: "3"
+
+# volumes:
+#   nexus-db-data:
+#     driver: local

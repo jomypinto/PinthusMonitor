@@ -13,6 +13,8 @@ import {
   HardDrive
 } from 'lucide-react';
 
+import { LocalServerMetrics } from '../../types/network';
+
 export type NavSection = 
   | 'Overview'
   | 'Network Discovery'
@@ -29,6 +31,7 @@ interface SidebarProps {
   onSelectSection: (section: NavSection) => void;
   unacknowledgedAlertsCount: number;
   totalDevicesCount: number;
+  serverMetrics?: LocalServerMetrics;
 }
 
 const NAV_ITEMS: { name: NavSection; icon: React.ReactNode; countKey?: 'alerts' | 'devices' }[] = [
@@ -47,7 +50,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   currentSection,
   onSelectSection,
   unacknowledgedAlertsCount,
-  totalDevicesCount
+  totalDevicesCount,
+  serverMetrics
 }) => {
   return (
     <aside className="w-64 bg-slate-950 border-r border-slate-800 flex flex-col shrink-0 select-none">
@@ -112,11 +116,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <span className="font-mono text-[10px] text-emerald-400">ONLINE</span>
           </div>
           <div className="font-mono text-slate-200 font-medium truncate">
-            nexus-monitor-node.lan
+            {serverMetrics?.serverHostname && serverMetrics.serverHostname !== 'localhost'
+              ? serverMetrics.serverHostname
+              : 'nexus-node (192.168.0.13)'}
           </div>
           <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono mt-1 pt-1 border-t border-slate-800/80">
-            <span>192.168.1.15</span>
-            <span>eth0: 1 Gbps</span>
+            <span>{serverMetrics?.ipAddress && serverMetrics.ipAddress !== '127.0.0.1' ? serverMetrics.ipAddress : '192.168.0.13'}</span>
+            <span>
+              {serverMetrics?.interfaces?.find(i => i.name !== 'lo')?.name || 'eth0'}:{' '}
+              {serverMetrics?.interfaces?.find(i => i.name !== 'lo')?.speedMbps
+                ? `${serverMetrics.interfaces.find(i => i.name !== 'lo')!.speedMbps} Mbps`
+                : '1 Gbps'}
+            </span>
           </div>
         </div>
       </div>
