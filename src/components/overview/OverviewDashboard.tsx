@@ -61,7 +61,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({
   const responsiveCount = onlineCount + degradedCount;
   const availabilityPercent = totalCount > 0 
     ? Number(((responsiveCount / totalCount) * 100).toFixed(1)) 
-    : 100;
+    : 0;
 
   // Local Server Metrics
   const cpuPercent = serverMetrics.cpu.utilizationPercent;

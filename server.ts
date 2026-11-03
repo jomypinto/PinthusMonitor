@@ -351,6 +351,11 @@ const realEvents = [
 
 // --- REST API ENDPOINTS (100% REAL DATA) ---
 
+app.use('/api', (req, res, next) => {
+  res.setHeader('Content-Type', 'application/json');
+  next();
+});
+
 // 1. Health
 app.get('/api/health', (req, res) => {
   res.json({
@@ -684,6 +689,11 @@ app.get('/api/subnets', (req, res) => {
     source: 'real_kernel_routes',
     data: subnets
   });
+});
+
+// Explicit API 404 handler so unmatched /api routes never fall through to Vite index.html
+app.all('/api/*', (req, res) => {
+  res.status(404).json({ success: false, error: 'Endpoint not found', path: req.path });
 });
 
 // Start server with Vite middleware in development
