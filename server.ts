@@ -699,7 +699,10 @@ app.all('/api/*', (req, res) => {
 // Start server with Vite middleware in development
 async function startServer() {
   const vite = await createViteServer({
-    server: { middlewareMode: true },
+    server: {
+      middlewareMode: true,
+      hmr: false
+    },
     appType: 'spa'
   });
 
