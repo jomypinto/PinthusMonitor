@@ -67,6 +67,6 @@ EXPOSE 3000
 
 # Periodic healthcheck
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-  CMD curl -f http://127.0.0.1:3000/api/health || exit 1
+  CMD sh -c "curl -f http://127.0.0.1:\${PORT:-3000}/api/health" || exit 1
 
 CMD ["tsx", "server.ts"]
