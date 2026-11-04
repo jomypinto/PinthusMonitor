@@ -523,10 +523,22 @@ app.post('/api/network/ping', (req, res) => {
 
     const lossMatch = (stdout || '').match(/([0-9.]+)%\s*packet loss/);
     const packetLoss = lossMatch ? parseFloat(lossMatch[1]) : (err ? 100 : 0);
+    const isOnline = !err && packetLoss < 100;
+    const finalRtt = avgRtt || (packetLoss === 0 ? 0.2 : 0);
+
+    // Synchronize asset status in inventory
+    const devIndex = realDevices.findIndex(d => d.ipAddress === sanitized);
+    if (devIndex >= 0) {
+      realDevices[devIndex].latencyMs = finalRtt;
+      realDevices[devIndex].packetLossPercent = packetLoss;
+      realDevices[devIndex].status = isOnline ? (finalRtt > 45 || packetLoss > 0 ? 'degraded' : 'online') : 'offline';
+      realDevices[devIndex].lastSeen = 'Agora mesmo';
+      savePersistedDevices(realDevices);
+    }
 
     res.json({
-      success: !err && packetLoss < 100,
-      rttMs: avgRtt || (packetLoss === 0 ? 0.2 : 0),
+      success: isOnline,
+      rttMs: finalRtt,
       packetsTransmitted: 4,
       packetsReceived: packetLoss === 100 ? 0 : Math.round(4 * (1 - packetLoss / 100)),
       output: lines.length > 0 ? lines : [`Executed ping on ${sanitized}: ${err ? err.message : 'Complete'}`]

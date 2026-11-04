@@ -11,6 +11,18 @@ interface HeaderProps {
   isRefreshing?: boolean;
 }
 
+const SECTION_NAMES_PT: Record<string, string> = {
+  'Overview': 'Visão Geral',
+  'Network Discovery': 'Deteção de Rede',
+  'Asset Inventory': 'Inventário de Ativos',
+  'Network Monitoring': 'Monitorização de Rede',
+  'Network Connections': 'Ligações de Rede',
+  'Traffic Analysis': 'Análise de Tráfego',
+  'Events and Alerts': 'Eventos e Alertas',
+  'Reports': 'Relatórios',
+  'Settings': 'Definições'
+};
+
 export const Header: React.FC<HeaderProps> = ({
   currentSection,
   backendConfig,
@@ -39,7 +51,7 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="flex items-center gap-2 text-sm text-slate-400 min-w-0">
         <span className="text-slate-500 font-mono text-xs">NEXUS</span>
         <span className="text-slate-600">/</span>
-        <span className="font-semibold text-slate-100 truncate">{currentSection}</span>
+        <span className="font-semibold text-slate-100 truncate">{SECTION_NAMES_PT[currentSection] || currentSection}</span>
       </div>
 
       {/* Zone 2: Real System Telemetry & Environment Indicator */}

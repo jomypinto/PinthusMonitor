@@ -34,16 +34,16 @@ interface SidebarProps {
   serverMetrics?: LocalServerMetrics;
 }
 
-const NAV_ITEMS: { name: NavSection; icon: React.ReactNode; countKey?: 'alerts' | 'devices' }[] = [
-  { name: 'Overview', icon: <LayoutDashboard size={18} /> },
-  { name: 'Network Discovery', icon: <Radar size={18} /> },
-  { name: 'Asset Inventory', icon: <Server size={18} />, countKey: 'devices' },
-  { name: 'Network Monitoring', icon: <Activity size={18} /> },
-  { name: 'Network Connections', icon: <Network size={18} /> },
-  { name: 'Traffic Analysis', icon: <BarChart3 size={18} /> },
-  { name: 'Events and Alerts', icon: <BellRing size={18} />, countKey: 'alerts' },
-  { name: 'Reports', icon: <FileText size={18} /> },
-  { name: 'Settings', icon: <Settings size={18} /> }
+const NAV_ITEMS: { name: NavSection; label: string; icon: React.ReactNode; countKey?: 'alerts' | 'devices' }[] = [
+  { name: 'Overview', label: 'Visão Geral', icon: <LayoutDashboard size={18} /> },
+  { name: 'Network Discovery', label: 'Deteção de Rede', icon: <Radar size={18} /> },
+  { name: 'Asset Inventory', label: 'Inventário de Ativos', icon: <Server size={18} />, countKey: 'devices' },
+  { name: 'Network Monitoring', label: 'Monitorização de Rede', icon: <Activity size={18} /> },
+  { name: 'Network Connections', label: 'Ligações de Rede', icon: <Network size={18} /> },
+  { name: 'Traffic Analysis', label: 'Análise de Tráfego', icon: <BarChart3 size={18} /> },
+  { name: 'Events and Alerts', label: 'Eventos e Alertas', icon: <BellRing size={18} />, countKey: 'alerts' },
+  { name: 'Reports', label: 'Relatórios', icon: <FileText size={18} /> },
+  { name: 'Settings', label: 'Definições', icon: <Settings size={18} /> }
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -89,7 +89,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <span className={isActive ? 'text-cyan-400' : 'text-slate-500'}>
                   {item.icon}
                 </span>
-                <span className="truncate">{item.name}</span>
+                <span className="truncate">{item.label}</span>
               </div>
 
               {item.countKey === 'alerts' && unacknowledgedAlertsCount > 0 && (
