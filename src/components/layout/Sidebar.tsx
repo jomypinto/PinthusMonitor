@@ -10,6 +10,7 @@ import {
   FileText, 
   Settings, 
   ShieldAlert,
+  ShieldCheck,
   HardDrive
 } from 'lucide-react';
 
@@ -19,6 +20,8 @@ export type NavSection =
   | 'Overview'
   | 'Network Discovery'
   | 'Asset Inventory'
+  | 'Firmware & Vulnerabilities'
+  | 'Compliance Policies'
   | 'Network Monitoring'
   | 'Network Connections'
   | 'Traffic Analysis'
@@ -31,13 +34,17 @@ interface SidebarProps {
   onSelectSection: (section: NavSection) => void;
   unacknowledgedAlertsCount: number;
   totalDevicesCount: number;
+  vulnerableDevicesCount?: number;
+  nonCompliantCount?: number;
   serverMetrics?: LocalServerMetrics;
 }
 
-const NAV_ITEMS: { name: NavSection; label: string; icon: React.ReactNode; countKey?: 'alerts' | 'devices' }[] = [
+const NAV_ITEMS: { name: NavSection; label: string; icon: React.ReactNode; countKey?: 'alerts' | 'devices' | 'vulnerabilities' | 'compliance' }[] = [
   { name: 'Overview', label: 'Visão Geral', icon: <LayoutDashboard size={18} /> },
   { name: 'Network Discovery', label: 'Deteção de Rede', icon: <Radar size={18} /> },
   { name: 'Asset Inventory', label: 'Inventário de Ativos', icon: <Server size={18} />, countKey: 'devices' },
+  { name: 'Firmware & Vulnerabilities', label: 'Firmware e CVEs', icon: <ShieldAlert size={18} />, countKey: 'vulnerabilities' },
+  { name: 'Compliance Policies', label: 'Políticas & Compliance', icon: <ShieldCheck size={18} />, countKey: 'compliance' },
   { name: 'Network Monitoring', label: 'Monitorização de Rede', icon: <Activity size={18} /> },
   { name: 'Network Connections', label: 'Ligações de Rede', icon: <Network size={18} /> },
   { name: 'Traffic Analysis', label: 'Análise de Tráfego', icon: <BarChart3 size={18} /> },
@@ -51,6 +58,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectSection,
   unacknowledgedAlertsCount,
   totalDevicesCount,
+  vulnerableDevicesCount = 0,
+  nonCompliantCount = 0,
   serverMetrics
 }) => {
   return (
@@ -101,6 +110,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
               {item.countKey === 'devices' && (
                 <span className="text-[11px] font-mono text-slate-400">
                   {totalDevicesCount}
+                </span>
+              )}
+
+              {item.countKey === 'vulnerabilities' && (vulnerableDevicesCount || 0) > 0 && (
+                <span className="text-[11px] font-mono font-medium px-1.5 py-0.2 bg-amber-500/20 text-amber-300 rounded border border-amber-500/30">
+                  {vulnerableDevicesCount}
+                </span>
+              )}
+
+              {item.countKey === 'compliance' && (nonCompliantCount || 0) > 0 && (
+                <span className="text-[11px] font-mono font-medium px-1.5 py-0.2 bg-rose-500/20 text-rose-300 rounded border border-rose-500/30">
+                  {nonCompliantCount}
                 </span>
               )}
             </button>

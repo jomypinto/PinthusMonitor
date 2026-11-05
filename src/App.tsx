@@ -5,6 +5,8 @@ import { ServerStatusBar } from './components/layout/ServerStatusBar';
 import { OverviewDashboard } from './components/overview/OverviewDashboard';
 import { NetworkDiscovery } from './components/discovery/NetworkDiscovery';
 import { AssetInventory } from './components/inventory/AssetInventory';
+import { FirmwareVulnerabilityDashboard } from './components/security/FirmwareVulnerabilityDashboard';
+import { CompliancePolicy } from './components/compliance/CompliancePolicy';
 import { NetworkMonitoring } from './components/monitoring/NetworkMonitoring';
 import { NetworkConnections } from './components/connections/NetworkConnections';
 import { TrafficAnalysis } from './components/traffic/TrafficAnalysis';
@@ -105,15 +107,18 @@ export default function App() {
   };
 
   const unacknowledgedAlertsCount = events.filter(e => !e.acknowledged).length;
+  const nonCompliantCount = devices.filter(d => (d.compliance?.failedChecks || 0) > 0).length;
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-slate-950 text-slate-100 font-sans selection:bg-cyan-500/20 selection:text-cyan-200">
-      {/* Sidebar: 9 Navigation Sections */}
+      {/* Sidebar: Navigation Sections */}
       <Sidebar
         currentSection={currentSection}
         onSelectSection={(section) => setCurrentSection(section)}
         unacknowledgedAlertsCount={unacknowledgedAlertsCount}
         totalDevicesCount={devices.length}
+        vulnerableDevicesCount={devices.filter(d => (d.vulnerabilities?.length || 0) > 0).length}
+        nonCompliantCount={nonCompliantCount}
         serverMetrics={serverMetrics}
       />
 
@@ -166,6 +171,22 @@ export default function App() {
                 devices={devices}
                 onOpenDeviceDetail={handleOpenDeviceDetail}
                 onRefreshDevices={loadData}
+              />
+            )}
+
+            {currentSection === 'Firmware & Vulnerabilities' && (
+              <FirmwareVulnerabilityDashboard
+                devices={devices}
+                onRefreshDevices={loadData}
+                onOpenDeviceDetail={handleOpenDeviceDetail}
+              />
+            )}
+
+            {currentSection === 'Compliance Policies' && (
+              <CompliancePolicy
+                devices={devices}
+                onRefreshDevices={loadData}
+                onOpenDeviceDetail={handleOpenDeviceDetail}
               />
             )}
 

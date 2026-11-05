@@ -1,0 +1,48 @@
+[
+  {
+    "id": "sub-lan-0",
+    "name": "Sub-rede Principal LAN",
+    "cidr": "169.254.8.0/24",
+    "vlan": 1,
+    "description": "Segmento de rede local na interface eth1 (169.254.8.1)",
+    "isAuthorized": true,
+    "probeType": "ARP+ICMP",
+    "rateLimitPps": 150,
+    "enabled": true,
+    "lastScanned": "Recentemente"
+  },
+  {
+    "id": "sub-lan-0",
+    "name": "Sub-rede Principal LAN",
+    "cidr": "192.168.0.0/24",
+    "vlan": 1,
+    "description": "Sub-rede física local do servidor monitor NEXUS (192.168.0.13 na eth0)",
+    "isAuthorized": true,
+    "probeType": "ARP+ICMP",
+    "rateLimitPps": 150,
+    "enabled": true,
+    "lastScanned": "Recentemente"
+  },
+  {
+    "id": "sub-lan-20",
+    "name": "Sub-rede 192.168.20.0/24 (VLAN 20)",
+    "cidr": "192.168.20.0/24",
+    "vlan": 20,
+    "description": "Segmento adicionado para descoberta de ativos e equipamentos adicionais",
+    "isAuthorized": true,
+    "probeType": "ICMP_ONLY",
+    "rateLimitPps": 150,
+    "enabled": true
+  },
+  {
+    "id": "sub-mgmt-10",
+    "name": "Gestão Secundária (10.0.0.0/24)",
+    "cidr": "10.0.0.0/24",
+    "vlan": 10,
+    "description": "Sub-rede de gestão para routers, switches e consolas de rede",
+    "isAuthorized": true,
+    "probeType": "ICMP_ONLY",
+    "rateLimitPps": 100,
+    "enabled": true
+  }
+]

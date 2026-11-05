@@ -1,5 +1,6 @@
 import { NetworkDevice, LocalServerMetrics, NetworkEvent, SubnetScanRange, DiscoveryScanJob, TrafficTalker, ProtocolStat, ConnectionLink } from '../types/network';
 import { ApiResponse, BackendConfig, StartScanPayload, DeviceQueryParams } from '../types/api';
+import { FleetComplianceOverview, DeviceComplianceSummary, ComplianceRule } from '../types/compliance';
 import { 
   INITIAL_DEVICES, 
   INITIAL_SERVER_METRICS, 
@@ -226,6 +227,19 @@ class NexusApiService {
   }
 
   public async saveSubnetRange(range: SubnetScanRange): Promise<ApiResponse<SubnetScanRange>> {
+    const json = await safeFetchJson<{ success: boolean; data: SubnetScanRange }>('/api/subnets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(range)
+    });
+    if (json && json.data) {
+      return {
+        success: true,
+        data: json.data,
+        timestamp: new Date().toISOString(),
+        source: 'live_flask_api'
+      };
+    }
     return {
       success: true,
       data: range,
@@ -235,7 +249,9 @@ class NexusApiService {
   }
 
   public async deleteSubnetRange(id: string): Promise<void> {
-    // Delete handled in memory
+    await safeFetchJson(`/api/subnets/${id}`, {
+      method: 'DELETE'
+    });
   }
 
   public getActiveScanJob(): DiscoveryScanJob | null {
@@ -335,6 +351,186 @@ class NexusApiService {
       return json.data;
     }
     return INITIAL_CONNECTION_LINKS;
+  }
+
+  // --- Security & Firmware Audit ---
+
+  public async triggerSecurityScan(deviceId?: string): Promise<{ success: boolean; totalAudited: number; data: NetworkDevice[] }> {
+    const json = await safeFetchJson<{ success: boolean; totalAudited: number; data: NetworkDevice[] }>('/api/security/scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deviceId })
+    });
+    if (json) return json;
+    return {
+      success: true,
+      totalAudited: INITIAL_DEVICES.length,
+      data: INITIAL_DEVICES
+    };
+  }
+
+  public async getSecurityVulnerabilities(): Promise<{ success: boolean; totalDevices: number; uniqueCvesCount: number; cves: any[] }> {
+    const json = await safeFetchJson<{ success: boolean; totalDevices: number; uniqueCvesCount: number; cves: any[] }>('/api/security/vulnerabilities');
+    if (json) return json;
+    return {
+      success: true,
+      totalDevices: INITIAL_DEVICES.length,
+      uniqueCvesCount: 4,
+      cves: []
+    };
+  }
+
+  // --- Automated NIST CVE Lookup Service ---
+  public async automatedCveLookup(deviceId?: string): Promise<{
+    success: boolean;
+    message?: string;
+    totalAudited: number;
+    vulnerableCount: number;
+    cleanCount: number;
+    maxRiskScore: number;
+    criticalCount: number;
+    highCount: number;
+    mediumCount: number;
+    lowCount: number;
+    timestamp: string;
+    data: NetworkDevice[];
+  }> {
+    const json = await safeFetchJson<{
+      success: boolean;
+      message?: string;
+      totalAudited: number;
+      vulnerableCount: number;
+      cleanCount: number;
+      maxRiskScore: number;
+      criticalCount: number;
+      highCount: number;
+      mediumCount: number;
+      lowCount: number;
+      timestamp: string;
+      data: NetworkDevice[];
+    }>('/api/security/cve-lookup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deviceId })
+    });
+
+    if (json && json.success) return json;
+
+    return {
+      success: true,
+      message: 'Lookup executado com base local.',
+      totalAudited: INITIAL_DEVICES.length,
+      vulnerableCount: 4,
+      cleanCount: 2,
+      maxRiskScore: 9.1,
+      criticalCount: 1,
+      highCount: 3,
+      mediumCount: 0,
+      lowCount: 0,
+      timestamp: new Date().toISOString(),
+      data: INITIAL_DEVICES
+    };
+  }
+
+  // --- Compliance Policies & CIS Benchmarks ---
+  public async getComplianceSummary(): Promise<ApiResponse<FleetComplianceOverview>> {
+    const json = await safeFetchJson<{ success: boolean; data: FleetComplianceOverview }>('/api/compliance/summary');
+    if (json && json.success) {
+      return { 
+        success: true, 
+        data: json.data, 
+        timestamp: new Date().toISOString(), 
+        source: 'live_flask_api' 
+      };
+    }
+    return {
+      success: true,
+      timestamp: new Date().toISOString(),
+      source: 'mock',
+      data: {
+        fleetComplianceScore: 78,
+        totalDevicesAudited: INITIAL_DEVICES.length,
+        totalChecksEvaluated: 42,
+        totalPassed: 33,
+        totalFailed: 8,
+        totalWarnings: 1,
+        criticalGaps: 1,
+        highGaps: 4,
+        devicesByGrade: { A: 2, B: 2, C: 1, D: 0, F: 1 },
+        topNonCompliantParameters: [
+          { parameter: 'PermitRootLogin', affectedCount: 2, severity: 'high', category: 'SSH Hardening' },
+          { parameter: 'Service telnet', affectedCount: 1, severity: 'critical', category: 'Network Services' }
+        ],
+        timestamp: new Date().toISOString()
+      }
+    };
+  }
+
+  public async getDeviceCompliance(deviceId: string): Promise<ApiResponse<DeviceComplianceSummary>> {
+    const json = await safeFetchJson<{ success: boolean; data: DeviceComplianceSummary }>(`/api/compliance/devices/${deviceId}`);
+    if (json && json.success) {
+      return { 
+        success: true, 
+        data: json.data, 
+        timestamp: new Date().toISOString(), 
+        source: 'live_flask_api' 
+      };
+    }
+    throw new Error('Não foi possível obter dados de conformidade');
+  }
+
+  public async auditCompliance(deviceId?: string): Promise<{
+    success: boolean;
+    message?: string;
+    data: FleetComplianceOverview;
+    devices: NetworkDevice[];
+  }> {
+    const json = await safeFetchJson<{
+      success: boolean;
+      message?: string;
+      data: FleetComplianceOverview;
+      devices: NetworkDevice[];
+    }>('/api/compliance/audit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deviceId })
+    });
+
+    if (json && json.success) {
+      return json;
+    }
+
+    const summary = await this.getComplianceSummary();
+    return {
+      success: true,
+      message: 'Auditoria de conformidade executada localmente.',
+      data: summary.data,
+      devices: INITIAL_DEVICES
+    };
+  }
+
+  public async remediateComplianceRule(deviceId: string, ruleId: string): Promise<{
+    success: boolean;
+    message?: string;
+    device: NetworkDevice;
+    rule?: ComplianceRule;
+  }> {
+    const json = await safeFetchJson<{
+      success: boolean;
+      message?: string;
+      device: NetworkDevice;
+      rule?: ComplianceRule;
+    }>('/api/compliance/remediate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deviceId, ruleId })
+    });
+
+    if (json && json.success) {
+      return json;
+    }
+
+    throw new Error('Falha ao aplicar remediação de conformidade.');
   }
 }
 

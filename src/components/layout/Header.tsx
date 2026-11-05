@@ -15,6 +15,7 @@ const SECTION_NAMES_PT: Record<string, string> = {
   'Overview': 'Visão Geral',
   'Network Discovery': 'Deteção de Rede',
   'Asset Inventory': 'Inventário de Ativos',
+  'Firmware & Vulnerabilities': 'Firmware e Vulnerabilidades',
   'Network Monitoring': 'Monitorização de Rede',
   'Network Connections': 'Ligações de Rede',
   'Traffic Analysis': 'Análise de Tráfego',

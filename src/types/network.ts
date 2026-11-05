@@ -1,3 +1,5 @@
+import { DeviceComplianceSummary } from './compliance';
+
 export type DeviceStatus = 'online' | 'offline' | 'degraded' | 'unknown';
 
 export type DeviceType = 
@@ -11,6 +13,28 @@ export type DeviceType =
   | 'Printer'
   | 'IoT / Embedded'
   | 'Virtual Machine';
+
+export type NistRiskLevel = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'SAFE';
+
+export type FirmwareUpdateStatus = 'up_to_date' | 'update_available' | 'critical_update' | 'unknown';
+
+export interface VulnerabilityItem {
+  cveId: string;
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  score: number; // CVSS v3.1 base score, e.g. 9.8
+  title: string;
+  description: string;
+  affectedVersions: string;
+  fixedVersion?: string;
+  patchAvailable: boolean;
+  attackVector?: string;
+  cvssVector?: string;
+  publishedDate?: string;
+  advisoryUrl?: string;
+  nistUrl?: string;
+  cpe?: string;
+  mitigationNotes?: string;
+}
 
 export interface NetworkDevice {
   id: string;
@@ -35,7 +59,32 @@ export interface NetworkDevice {
   notes?: string;
   isAuthorized: boolean;
   tags: string[];
+
+  // Firmware & Security Posture
+  firmwareVersion?: string;
+  latestFirmwareVersion?: string;
+  firmwareUpdateStatus?: FirmwareUpdateStatus;
+  firmwareReleaseDate?: string;
+  vulnerabilities?: VulnerabilityItem[];
+  vulnerabilitySummary?: {
+    critical: number;
+    high: number;
+    medium: number;
+    low: number;
+    total: number;
+  };
+  vulnerabilityRiskScore?: number; // 0-100
+  nistRiskScore?: number; // 0.0 - 10.0 CVSS scale
+  nistRiskLevel?: NistRiskLevel;
+  cpeMatch?: string;
+  lastSecurityScan?: string;
+  cveLookupStatus?: 'synced' | 'pending' | 'scanning' | 'clean' | 'error';
+
+  // Compliance Policy & CIS Benchmarks
+  compliance?: DeviceComplianceSummary;
 }
+
+export * from './compliance';
 
 export interface LocalServerMetrics {
   serverHostname: string;

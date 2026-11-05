@@ -72,10 +72,59 @@ export const AssetInventory: React.FC<AssetInventoryProps> = ({
   const [isBatchProbing, setIsBatchProbing] = useState(false);
   const [batchProgress, setBatchProgress] = useState<{ current: number; total: number; currentHost: string } | null>(null);
 
+  // Automated NIST CVE Lookup state
+  const [riskFilter, setRiskFilter] = useState<string>('all');
+  const [isCveLookingUp, setIsCveLookingUp] = useState(false);
+  const [cveLookupSummary, setCveLookupSummary] = useState<{
+    message: string;
+    timestamp: string;
+    maxScore: number;
+    vulnerableCount: number;
+    cleanCount: number;
+  } | null>(null);
+  const [individualCveScanId, setIndividualCveScanId] = useState<string | null>(null);
+
   // Sync when parent prop changes
   React.useEffect(() => {
     setDeviceList(initialDevices);
   }, [initialDevices]);
+
+  // Automated NIST CVE Lookup trigger
+  const handleAutomatedCveLookup = async (targetDeviceId?: string) => {
+    if (targetDeviceId) {
+      setIndividualCveScanId(targetDeviceId);
+    } else {
+      setIsCveLookingUp(true);
+    }
+
+    try {
+      const res = await nexusApi.automatedCveLookup(targetDeviceId);
+      if (res && res.data) {
+        setDeviceList(res.data);
+        setCveLookupSummary({
+          message: targetDeviceId
+            ? `Lookup NIST concluído para o nó selecionado: CVSS Score ${(res.data.find(d => d.id === targetDeviceId)?.nistRiskScore || 0).toFixed(1)} (${res.data.find(d => d.id === targetDeviceId)?.nistRiskLevel || 'SAFE'}).`
+            : `Lookup automatizado NIST/CVE concluído: ${res.totalAudited} ativos auditados contra NVD. ${res.vulnerableCount} com CVEs detetadas (Score Máximo: ${res.maxRiskScore} CVSS).`,
+          timestamp: new Date().toLocaleTimeString(),
+          maxScore: res.maxRiskScore,
+          vulnerableCount: res.vulnerableCount,
+          cleanCount: res.cleanCount
+        });
+        onRefreshDevices();
+      }
+    } catch (err: any) {
+      setCveLookupSummary({
+        message: `Falha no lookup NIST: ${err.message || 'Erro de comunicação'}`,
+        timestamp: new Date().toLocaleTimeString(),
+        maxScore: 0,
+        vulnerableCount: 0,
+        cleanCount: 0
+      });
+    } finally {
+      setIsCveLookingUp(false);
+      setIndividualCveScanId(null);
+    }
+  };
 
   // Copy IP to clipboard helper
   const handleCopyIp = (ip: string, e: React.MouseEvent) => {
@@ -205,6 +254,12 @@ export const AssetInventory: React.FC<AssetInventoryProps> = ({
   const offlineAssets = deviceList.filter(d => d.status === 'offline').length;
   const uncatalogedAssets = deviceList.filter(d => !d.isAuthorized).length;
 
+  // NIST Risk distribution counts
+  const criticalRiskAssets = deviceList.filter(d => (d.nistRiskLevel === 'CRITICAL' || (d.nistRiskScore || 0) >= 9.0)).length;
+  const highRiskAssets = deviceList.filter(d => (d.nistRiskLevel === 'HIGH' || ((d.nistRiskScore || 0) >= 7.0 && (d.nistRiskScore || 0) < 9.0))).length;
+  const mediumRiskAssets = deviceList.filter(d => (d.nistRiskLevel === 'MEDIUM' || ((d.nistRiskScore || 0) >= 4.0 && (d.nistRiskScore || 0) < 7.0))).length;
+  const safeRiskAssets = deviceList.filter(d => (!d.nistRiskScore || d.nistRiskScore === 0 || d.nistRiskLevel === 'SAFE')).length;
+
   const averageLatency = useMemo(() => {
     const responsive = deviceList.filter(d => d.status === 'online' && d.latencyMs > 0);
     if (responsive.length === 0) return 0;
@@ -231,6 +286,7 @@ export const AssetInventory: React.FC<AssetInventoryProps> = ({
         device.macAddress.toLowerCase().includes(q) ||
         device.manufacturer.toLowerCase().includes(q) ||
         device.operatingSystem.toLowerCase().includes(q) ||
+        (device.cpeMatch && device.cpeMatch.toLowerCase().includes(q)) ||
         device.tags.some(t => t.toLowerCase().includes(q));
 
       const matchesStatus = 
@@ -243,7 +299,18 @@ export const AssetInventory: React.FC<AssetInventoryProps> = ({
       const matchesType = typeFilter === 'all' || device.deviceType === typeFilter;
       const matchesSubnet = subnetFilter === 'all' || device.subnet === subnetFilter;
 
-      return matchesSearch && matchesStatus && matchesType && matchesSubnet;
+      const matchesRisk = 
+        riskFilter === 'all'
+          ? true
+          : riskFilter === 'CRITICAL'
+            ? (device.nistRiskLevel === 'CRITICAL' || (device.nistRiskScore || 0) >= 9.0)
+            : riskFilter === 'HIGH'
+              ? (device.nistRiskLevel === 'HIGH' || ((device.nistRiskScore || 0) >= 7.0 && (device.nistRiskScore || 0) < 9.0))
+              : riskFilter === 'MEDIUM'
+                ? (device.nistRiskLevel === 'MEDIUM' || ((device.nistRiskScore || 0) >= 4.0 && (device.nistRiskScore || 0) < 7.0))
+                : (device.nistRiskLevel === 'SAFE' || !device.nistRiskScore || device.nistRiskScore === 0);
+
+      return matchesSearch && matchesStatus && matchesType && matchesSubnet && matchesRisk;
     }).sort((a, b) => {
       const order = sortOrder === 'asc' ? 1 : -1;
       const valA = a[sortBy] ?? '';
@@ -260,12 +327,18 @@ export const AssetInventory: React.FC<AssetInventoryProps> = ({
         return 0;
       }
 
+      if (sortBy === 'nistRiskScore') {
+        const scoreA = a.nistRiskScore ?? 0;
+        const scoreB = b.nistRiskScore ?? 0;
+        return (scoreA - scoreB) * order;
+      }
+
       if (typeof valA === 'number' && typeof valB === 'number') {
         return (valA - valB) * order;
       }
       return String(valA).localeCompare(String(valB)) * order;
     });
-  }, [deviceList, search, statusFilter, typeFilter, subnetFilter, sortBy, sortOrder]);
+  }, [deviceList, search, statusFilter, typeFilter, subnetFilter, riskFilter, sortBy, sortOrder]);
 
   // Pagination
   const totalPages = Math.ceil(filteredDevices.length / itemsPerPage) || 1;
@@ -383,6 +456,26 @@ export const AssetInventory: React.FC<AssetInventoryProps> = ({
               )}
             </button>
 
+            {/* Automated NIST CVE Lookup Button */}
+            <button
+              onClick={() => handleAutomatedCveLookup()}
+              disabled={isCveLookingUp}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-rose-600 hover:bg-rose-500 disabled:bg-slate-800 disabled:text-slate-500 text-slate-100 rounded-md transition-colors shadow-sm border border-rose-500/40"
+              title="Executar lookup automatizado de vulnerabilidades contra bases públicas NIST NVD e MITRE"
+            >
+              {isCveLookingUp ? (
+                <>
+                  <RefreshCw size={13} className="animate-spin text-slate-100" />
+                  <span>Consultando NIST NVD...</span>
+                </>
+              ) : (
+                <>
+                  <ShieldAlert size={13} className="text-rose-200" />
+                  <span>Automated NIST CVE Lookup</span>
+                </>
+              )}
+            </button>
+
             {/* Export Action */}
             <button
               onClick={() => exportDevicesToCsv(filteredDevices)}
@@ -402,6 +495,33 @@ export const AssetInventory: React.FC<AssetInventoryProps> = ({
             </button>
           </div>
         </div>
+
+        {/* NIST CVE Lookup Banner */}
+        {cveLookupSummary && (
+          <div className="mt-4 p-3 bg-slate-950/90 border border-slate-700 rounded-md flex items-center justify-between text-xs font-mono">
+            <div className="flex items-center gap-2.5">
+              <div className={`p-1 rounded ${cveLookupSummary.maxScore >= 9.0 ? 'bg-rose-500/20 text-rose-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                <ShieldCheck size={14} />
+              </div>
+              <div>
+                <span className="text-slate-200 font-medium">{cveLookupSummary.message}</span>
+                <span className="ml-2 text-slate-400 text-[10px]">({cveLookupSummary.timestamp})</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-slate-400 text-[11px]">
+                Score Máx: <strong className={cveLookupSummary.maxScore >= 9.0 ? 'text-rose-400' : 'text-amber-400'}>{cveLookupSummary.maxScore.toFixed(1)} CVSS</strong>
+              </span>
+              <button 
+                onClick={() => setCveLookupSummary(null)} 
+                className="text-slate-400 hover:text-slate-200 text-xs px-1"
+                title="Fechar"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Batch Probe Live Banner */}
         {isBatchProbing && batchProgress && (
@@ -669,6 +789,19 @@ export const AssetInventory: React.FC<AssetInventoryProps> = ({
             ))}
           </select>
 
+          {/* NIST Risk Level Dropdown */}
+          <select
+            value={riskFilter}
+            onChange={(e) => { setRiskFilter(e.target.value); setCurrentPage(1); }}
+            className="bg-slate-950 border border-slate-800 rounded px-2.5 py-1 text-slate-200 focus:outline-none focus:border-rose-500 text-xs font-mono"
+          >
+            <option value="all">Todos os Riscos NIST</option>
+            <option value="CRITICAL">NIST Crítico (CVSS 9.0 - 10.0) ({criticalRiskAssets})</option>
+            <option value="HIGH">NIST Alto (CVSS 7.0 - 8.9) ({highRiskAssets})</option>
+            <option value="MEDIUM">NIST Médio (CVSS 4.0 - 6.9) ({mediumRiskAssets})</option>
+            <option value="SAFE">NIST Seguro / 0 CVEs ({safeRiskAssets})</option>
+          </select>
+
           {/* Sort By Dropdown */}
           <div className="flex items-center gap-1.5 ml-auto">
             <span className="text-slate-400 text-[11px] font-mono uppercase">Ordenar por:</span>
@@ -678,6 +811,7 @@ export const AssetInventory: React.FC<AssetInventoryProps> = ({
               className="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-slate-200 focus:outline-none focus:border-cyan-500 text-xs font-mono"
             >
               <option value="ipAddress">Endereço IP</option>
+              <option value="nistRiskScore">Risco NIST / CVSS</option>
               <option value="latencyMs">Latência (RTT)</option>
               <option value="hostname">Hostname</option>
               <option value="uptimeSeconds">Uptime</option>
@@ -692,13 +826,14 @@ export const AssetInventory: React.FC<AssetInventoryProps> = ({
             </button>
           </div>
 
-          {(search || statusFilter !== 'all' || typeFilter !== 'all' || subnetFilter !== 'all') && (
+          {(search || statusFilter !== 'all' || typeFilter !== 'all' || subnetFilter !== 'all' || riskFilter !== 'all') && (
             <button
               onClick={() => {
                 setSearch('');
                 setStatusFilter('all');
                 setTypeFilter('all');
                 setSubnetFilter('all');
+                setRiskFilter('all');
                 setCurrentPage(1);
               }}
               className="text-xs text-cyan-400 hover:text-cyan-300 underline font-medium"
@@ -852,25 +987,71 @@ export const AssetInventory: React.FC<AssetInventoryProps> = ({
                         </div>
                       </div>
 
-                      {/* OS and Ports Tag */}
+                      {/* Firmware & CVE Posture Tag */}
                       <div className="pt-2 border-t border-slate-800/60 flex items-center justify-between text-[11px]">
-                        <span className="text-slate-400 truncate max-w-[160px]" title={device.operatingSystem}>
-                          {device.operatingSystem}
+                        <span className="text-slate-400 truncate max-w-[150px]" title={device.firmwareVersion || device.operatingSystem}>
+                          {device.firmwareVersion || device.operatingSystem}
                         </span>
-                        <div className="flex items-center gap-1">
-                          {device.openPorts.slice(0, 3).map(port => (
-                            <span 
-                              key={port} 
-                              className="px-1.5 py-0.2 rounded bg-slate-800 text-[10px] font-mono text-cyan-300 border border-slate-700/60"
-                            >
-                              :{port}
-                            </span>
-                          ))}
-                          {device.openPorts.length > 3 && (
-                            <span className="text-[10px] text-slate-400 font-mono">
-                              +{device.openPorts.length - 3}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {device.firmwareUpdateStatus === 'update_available' && (
+                            <span className="px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-400 text-[10px] font-mono border border-amber-500/20">
+                              Update
                             </span>
                           )}
+                          {device.firmwareUpdateStatus === 'critical_update' && (
+                            <span className="px-1.5 py-0.2 rounded bg-rose-500/10 text-rose-400 text-[10px] font-mono border border-rose-500/20">
+                              Crítico
+                            </span>
+                          )}
+                          {(device.vulnerabilities?.length || 0) > 0 ? (
+                            <span className="px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-300 text-[10px] font-mono font-bold border border-rose-500/30">
+                              {device.vulnerabilities?.length} CVE{device.vulnerabilities?.length! > 1 ? 's' : ''}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-mono text-emerald-400">
+                              0 CVEs
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* NIST CVSS Risk Score Block */}
+                      <div className="pt-2 border-t border-slate-800/60 flex items-center justify-between text-[11px]">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold border ${
+                            (device.nistRiskLevel === 'CRITICAL' || (device.nistRiskScore || 0) >= 9.0)
+                              ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                              : (device.nistRiskLevel === 'HIGH' || (device.nistRiskScore || 0) >= 7.0)
+                                ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                                : (device.nistRiskLevel === 'MEDIUM' || (device.nistRiskScore || 0) >= 4.0)
+                                  ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40'
+                                  : (device.nistRiskLevel === 'LOW' || (device.nistRiskScore || 0) > 0)
+                                    ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
+                                    : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                          }`}>
+                            CVSS {device.nistRiskScore !== undefined ? device.nistRiskScore.toFixed(1) : '0.0'} · {device.nistRiskLevel || 'SAFE'}
+                          </span>
+                          {device.cveLookupStatus === 'synced' && (
+                            <span className="text-[10px] font-mono text-cyan-400 flex items-center gap-0.5" title="Sincronizado com feed NIST NVD">
+                              <ShieldCheck size={11} />
+                              NIST Sync
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {device.compliance && (
+                            <span className={`px-1.5 py-0.2 rounded text-[10px] font-mono font-bold border ${
+                              device.compliance.grade === 'A' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' :
+                              device.compliance.grade === 'B' ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' :
+                              device.compliance.grade === 'C' ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' :
+                              'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                            }`} title={`CIS Benchmark ${device.compliance.benchmarkName} (${device.compliance.complianceScore}%)`}>
+                              CIS {device.compliance.grade} ({device.compliance.complianceScore}%)
+                            </span>
+                          )}
+                          <span className="text-[10px] font-mono text-slate-400 truncate max-w-[90px]" title={device.cpeMatch || 'CPE'}>
+                            {device.cpeMatch ? device.cpeMatch.split(':')[4] || device.cpeMatch : 'Sem CPE'}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -895,6 +1076,23 @@ export const AssetInventory: React.FC<AssetInventoryProps> = ({
                           <span>Testar Ping</span>
                         </>
                       )}
+                    </button>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAutomatedCveLookup(device.id);
+                      }}
+                      disabled={individualCveScanId === device.id}
+                      className="p-1.5 px-2 bg-slate-950 hover:bg-slate-800 text-rose-300 border border-slate-800 hover:border-rose-700 rounded text-xs font-mono transition-colors flex items-center gap-1 disabled:opacity-50"
+                      title="Executar Automated NIST CVE Lookup para este ativo"
+                    >
+                      {individualCveScanId === device.id ? (
+                        <RefreshCw size={12} className="animate-spin text-rose-400" />
+                      ) : (
+                        <ShieldAlert size={12} className="text-rose-400" />
+                      )}
+                      <span>CVE</span>
                     </button>
 
                     <button
@@ -965,7 +1163,16 @@ export const AssetInventory: React.FC<AssetInventoryProps> = ({
                       <ArrowUpDown size={12} className={sortBy === 'deviceType' ? 'text-cyan-400' : 'text-slate-600'} />
                     </div>
                   </th>
-                  <th className="py-3 px-4 font-medium">SISTEMA OPERATIVO</th>
+                  <th className="py-3 px-4 font-medium">FIRMWARE & CVEs</th>
+                  <th 
+                    onClick={() => handleSort('nistRiskScore')} 
+                    className="py-3 px-4 font-medium cursor-pointer hover:text-slate-200"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>RISCO NIST / CVSS</span>
+                      <ArrowUpDown size={12} className={sortBy === 'nistRiskScore' ? 'text-cyan-400' : 'text-slate-600'} />
+                    </div>
+                  </th>
                   <th 
                     onClick={() => handleSort('latencyMs')} 
                     className="py-3 px-4 font-medium cursor-pointer hover:text-slate-200"
@@ -982,7 +1189,7 @@ export const AssetInventory: React.FC<AssetInventoryProps> = ({
               <tbody className="divide-y divide-slate-800/60 font-mono">
                 {paginatedDevices.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="py-8 text-center text-slate-400 font-sans">
+                    <td colSpan={10} className="py-8 text-center text-slate-400 font-sans">
                       Nenhum dispositivo encontrado para os filtros selecionados.
                     </td>
                   </tr>
@@ -1033,8 +1240,60 @@ export const AssetInventory: React.FC<AssetInventoryProps> = ({
                         <td className="py-3 px-4 text-slate-400 text-[11px]">{device.macAddress}</td>
                         <td className="py-3 px-4 text-slate-300 font-sans">{device.manufacturer}</td>
                         <td className="py-3 px-4 text-slate-300 font-sans">{device.deviceType}</td>
-                        <td className="py-3 px-4 text-slate-400 font-sans truncate max-w-[140px]" title={device.operatingSystem}>
-                          {device.operatingSystem}
+                        <td className="py-3 px-4 font-sans">
+                          <div className="text-slate-200 text-xs font-medium truncate max-w-[150px]" title={device.firmwareVersion || device.operatingSystem}>
+                            {device.firmwareVersion || device.operatingSystem}
+                          </div>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            {device.firmwareUpdateStatus === 'update_available' && (
+                              <span className="text-[10px] text-amber-400 font-mono">Update</span>
+                            )}
+                            {device.firmwareUpdateStatus === 'critical_update' && (
+                              <span className="text-[10px] text-rose-400 font-mono font-bold">Crítico</span>
+                            )}
+                            {device.firmwareUpdateStatus === 'up_to_date' && (
+                              <span className="text-[10px] text-emerald-400 font-mono">Em dia</span>
+                            )}
+                            {(device.vulnerabilities?.length || 0) > 0 ? (
+                              <span className="px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-300 text-[10px] font-mono font-bold">
+                                {device.vulnerabilities?.length} CVE{device.vulnerabilities?.length! > 1 ? 's' : ''}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-slate-500 font-mono">0 CVEs</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 font-sans">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className={`px-2 py-0.5 rounded text-[11px] font-mono font-bold border ${
+                              (device.nistRiskLevel === 'CRITICAL' || (device.nistRiskScore || 0) >= 9.0)
+                                ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                                : (device.nistRiskLevel === 'HIGH' || (device.nistRiskScore || 0) >= 7.0)
+                                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                                  : (device.nistRiskLevel === 'MEDIUM' || (device.nistRiskScore || 0) >= 4.0)
+                                    ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40'
+                                    : (device.nistRiskLevel === 'LOW' || (device.nistRiskScore || 0) > 0)
+                                      ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
+                                      : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                            }`}>
+                              {device.nistRiskScore !== undefined ? device.nistRiskScore.toFixed(1) : '0.0'} {device.nistRiskLevel || 'SAFE'}
+                            </span>
+                            {device.compliance && (
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border ${
+                                device.compliance.grade === 'A' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' :
+                                device.compliance.grade === 'B' ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' :
+                                device.compliance.grade === 'C' ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' :
+                                'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                              }`} title={`CIS Benchmark: ${device.compliance.benchmarkName} (${device.compliance.complianceScore}%)`}>
+                                CIS {device.compliance.grade} ({device.compliance.complianceScore}%)
+                              </span>
+                            )}
+                          </div>
+                          {device.cpeMatch && (
+                            <div className="text-[10px] text-slate-400 font-mono truncate max-w-[170px] mt-0.5" title={device.cpeMatch}>
+                              {device.cpeMatch}
+                            </div>
+                          )}
                         </td>
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-2">
@@ -1058,6 +1317,22 @@ export const AssetInventory: React.FC<AssetInventoryProps> = ({
                               title="Testar ping em tempo real"
                             >
                               {isPinging ? <RefreshCw size={12} className="animate-spin text-cyan-400" /> : 'Ping'}
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAutomatedCveLookup(device.id);
+                              }}
+                              disabled={individualCveScanId === device.id}
+                              className="p-1 px-1.5 text-xs text-rose-400 hover:text-rose-300 hover:bg-slate-800 rounded font-mono border border-slate-800 transition-colors flex items-center gap-1"
+                              title="Executar Automated NIST CVE Lookup para este ativo"
+                            >
+                              {individualCveScanId === device.id ? (
+                                <RefreshCw size={11} className="animate-spin text-rose-400" />
+                              ) : (
+                                <ShieldAlert size={11} />
+                              )}
+                              <span>CVE</span>
                             </button>
                             <button
                               onClick={() => onOpenDeviceDetail(device)}

@@ -24,6 +24,7 @@ export interface StartScanPayload {
   probeType: 'ARP+ICMP' | 'SYN_SCAN' | 'ICMP_ONLY';
   rateLimitPps: number;
   timeoutMs: number;
+  scanScope?: 'fast' | 'full';
 }
 
 export interface BackendConfig {
