@@ -1,22 +1,10 @@
 [
   {
     "id": "sub-lan-0",
-    "name": "Sub-rede Principal LAN",
-    "cidr": "169.254.8.0/24",
-    "vlan": 1,
-    "description": "Segmento de rede local na interface eth1 (169.254.8.1)",
-    "isAuthorized": true,
-    "probeType": "ARP+ICMP",
-    "rateLimitPps": 150,
-    "enabled": true,
-    "lastScanned": "Recentemente"
-  },
-  {
-    "id": "sub-lan-0",
-    "name": "Sub-rede Principal LAN",
+    "name": "Sub-rede Principal LAN (192.168.0.0/24)",
     "cidr": "192.168.0.0/24",
     "vlan": 1,
-    "description": "Sub-rede física local do servidor monitor NEXUS (192.168.0.13 na eth0)",
+    "description": "Sub-rede física local autorizada (VLAN 1 - Gateway e Nó NEXUS)",
     "isAuthorized": true,
     "probeType": "ARP+ICMP",
     "rateLimitPps": 150,
@@ -25,24 +13,14 @@
   },
   {
     "id": "sub-lan-20",
-    "name": "Sub-rede 192.168.20.0/24 (VLAN 20)",
+    "name": "Sub-rede VLAN 20 (192.168.20.0/24)",
     "cidr": "192.168.20.0/24",
     "vlan": 20,
-    "description": "Segmento adicionado para descoberta de ativos e equipamentos adicionais",
+    "description": "Sub-rede autorizada VLAN 20 (Armazenamento NAS e Wi-Fi UniFi)",
     "isAuthorized": true,
-    "probeType": "ICMP_ONLY",
+    "probeType": "ARP+ICMP",
     "rateLimitPps": 150,
-    "enabled": true
-  },
-  {
-    "id": "sub-mgmt-10",
-    "name": "Gestão Secundária (10.0.0.0/24)",
-    "cidr": "10.0.0.0/24",
-    "vlan": 10,
-    "description": "Sub-rede de gestão para routers, switches e consolas de rede",
-    "isAuthorized": true,
-    "probeType": "ICMP_ONLY",
-    "rateLimitPps": 100,
-    "enabled": true
+    "enabled": true,
+    "lastScanned": "Recentemente"
   }
 ]

@@ -18,7 +18,8 @@ import {
   Check,
   Copy,
   Terminal,
-  Server
+  Server,
+  Sparkles
 } from 'lucide-react';
 import { NetworkDevice } from '../../types/network';
 import { 
@@ -156,6 +157,26 @@ export const CompliancePolicy: React.FC<CompliancePolicyProps> = ({
     }
   };
 
+  const [isRemediatingAll, setIsRemediatingAll] = useState(false);
+
+  const handleRemediateAll = async () => {
+    setIsRemediatingAll(true);
+    try {
+      const res = await nexusApi.remediateAllCompliance();
+      if (res && res.success) {
+        setFeedbackMessage({
+          text: `Todas as ${res.remediatedCount} melhorias e correções CIS foram executadas com sucesso em toda a frota!`,
+          type: 'success'
+        });
+        onRefreshDevices();
+      }
+    } catch (e: any) {
+      setFeedbackMessage({ text: e.message || 'Falha ao aplicar remediações.', type: 'error' });
+    } finally {
+      setIsRemediatingAll(false);
+    }
+  };
+
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
     setCopiedCommand(text);
@@ -258,7 +279,18 @@ export const CompliancePolicy: React.FC<CompliancePolicyProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 shrink-0">
+        <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+          {fleetOverview.totalFailed > 0 && (
+            <button
+              onClick={handleRemediateAll}
+              disabled={isRemediatingAll}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 rounded text-xs font-bold transition-all shadow-sm disabled:opacity-50"
+              title="Executar todas as melhorias e correções CIS pendentes na rede"
+            >
+              <Sparkles size={13} className={isRemediatingAll ? 'animate-spin' : ''} />
+              <span>{isRemediatingAll ? 'A Corrigir...' : `Executar Todas as Correções CIS (${fleetOverview.totalFailed})`}</span>
+            </button>
+          )}
           <button
             onClick={handleExportReport}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 rounded text-xs font-medium transition-colors"

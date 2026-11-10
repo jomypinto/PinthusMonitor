@@ -39,6 +39,7 @@ import { NetworkDevice, DeviceType, DeviceStatus } from '../../types/network';
 import { DeviceStatusBadge } from '../common/StatusBadge';
 import { exportDevicesToCsv } from '../../services/exportService';
 import { nexusApi } from '../../services/api';
+import { FirmwareUpdateModal } from '../security/FirmwareUpdateModal';
 
 interface AssetInventoryProps {
   devices: NetworkDevice[];
@@ -67,6 +68,7 @@ export const AssetInventory: React.FC<AssetInventoryProps> = ({
   const [pingingDeviceId, setPingingDeviceId] = useState<string | null>(null);
   const [pingResults, setPingResults] = useState<Record<string, { rtt: number; success: boolean; time: string }>>({});
   const [copiedIp, setCopiedIp] = useState<string | null>(null);
+  const [firmwareModalDevice, setFirmwareModalDevice] = useState<NetworkDevice | null>(null);
 
   // Batch probe progress state
   const [isBatchProbing, setIsBatchProbing] = useState(false);
@@ -988,31 +990,56 @@ export const AssetInventory: React.FC<AssetInventoryProps> = ({
                       </div>
 
                       {/* Firmware & CVE Posture Tag */}
-                      <div className="pt-2 border-t border-slate-800/60 flex items-center justify-between text-[11px]">
-                        <span className="text-slate-400 truncate max-w-[150px]" title={device.firmwareVersion || device.operatingSystem}>
-                          {device.firmwareVersion || device.operatingSystem}
-                        </span>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          {device.firmwareUpdateStatus === 'update_available' && (
-                            <span className="px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-400 text-[10px] font-mono border border-amber-500/20">
-                              Update
-                            </span>
-                          )}
-                          {device.firmwareUpdateStatus === 'critical_update' && (
-                            <span className="px-1.5 py-0.2 rounded bg-rose-500/10 text-rose-400 text-[10px] font-mono border border-rose-500/20">
-                              Crítico
-                            </span>
-                          )}
-                          {(device.vulnerabilities?.length || 0) > 0 ? (
-                            <span className="px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-300 text-[10px] font-mono font-bold border border-rose-500/30">
-                              {device.vulnerabilities?.length} CVE{device.vulnerabilities?.length! > 1 ? 's' : ''}
-                            </span>
-                          ) : (
-                            <span className="text-[10px] font-mono text-emerald-400">
-                              0 CVEs
-                            </span>
-                          )}
+                      <div className="pt-2 border-t border-slate-800/60 space-y-1.5 text-[11px]">
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-400 truncate max-w-[150px]" title={device.firmwareVersion || device.operatingSystem}>
+                            {device.firmwareVersion || device.operatingSystem}
+                          </span>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {device.firmwareUpdateStatus === 'update_available' && (
+                              <span className="px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-400 text-[10px] font-mono border border-amber-500/20">
+                                Update
+                              </span>
+                            )}
+                            {device.firmwareUpdateStatus === 'critical_update' && (
+                              <span className="px-1.5 py-0.2 rounded bg-rose-500/10 text-rose-400 text-[10px] font-mono border border-rose-500/20">
+                                Crítico
+                              </span>
+                            )}
+                            {(device.vulnerabilities?.length || 0) > 0 ? (
+                              <span className="px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-300 text-[10px] font-mono font-bold border border-rose-500/30">
+                                {device.vulnerabilities?.length} CVE{device.vulnerabilities?.length! > 1 ? 's' : ''}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-mono text-emerald-400">
+                                0 CVEs
+                              </span>
+                            )}
+                          </div>
                         </div>
+
+                        {/* Banner de Atualização Disponível com Versões e Botão */}
+                        {(device.firmwareUpdateStatus === 'update_available' || device.firmwareUpdateStatus === 'critical_update') && (
+                          <div className="p-2 rounded bg-cyan-950/30 border border-cyan-800/50 flex items-center justify-between gap-1.5 text-[10px] font-mono">
+                            <div className="truncate">
+                              <span className="text-cyan-300 block truncate font-semibold">
+                                Download: {device.latestFirmwareVersion}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setFirmwareModalDevice(device);
+                              }}
+                              className="px-2 py-0.5 rounded bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-bold text-[9px] shrink-0 transition-colors flex items-center gap-1 shadow-sm"
+                              title="Atualizar firmware com autorização prévia"
+                            >
+                              <Download size={10} />
+                              <span>Atualizar</span>
+                            </button>
+                          </div>
+                        )}
                       </div>
 
                       {/* NIST CVSS Risk Score Block */}
@@ -1244,24 +1271,28 @@ export const AssetInventory: React.FC<AssetInventoryProps> = ({
                           <div className="text-slate-200 text-xs font-medium truncate max-w-[150px]" title={device.firmwareVersion || device.operatingSystem}>
                             {device.firmwareVersion || device.operatingSystem}
                           </div>
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            {device.firmwareUpdateStatus === 'update_available' && (
-                              <span className="text-[10px] text-amber-400 font-mono">Update</span>
-                            )}
-                            {device.firmwareUpdateStatus === 'critical_update' && (
-                              <span className="text-[10px] text-rose-400 font-mono font-bold">Crítico</span>
-                            )}
-                            {device.firmwareUpdateStatus === 'up_to_date' && (
-                              <span className="text-[10px] text-emerald-400 font-mono">Em dia</span>
-                            )}
-                            {(device.vulnerabilities?.length || 0) > 0 ? (
-                              <span className="px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-300 text-[10px] font-mono font-bold">
-                                {device.vulnerabilities?.length} CVE{device.vulnerabilities?.length! > 1 ? 's' : ''}
+                          {(device.firmwareUpdateStatus === 'update_available' || device.firmwareUpdateStatus === 'critical_update') ? (
+                            <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                              <span className="text-[10px] text-cyan-300 font-mono flex items-center gap-1">
+                                <Download size={9} />
+                                <span>{device.latestFirmwareVersion}</span>
                               </span>
-                            ) : (
-                              <span className="text-[10px] text-slate-500 font-mono">0 CVEs</span>
-                            )}
-                          </div>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setFirmwareModalDevice(device);
+                                }}
+                                className="px-1.5 py-0.5 rounded bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-200 border border-cyan-500/40 text-[9px] font-bold font-mono transition-colors"
+                                title="Atualizar firmware com autorização prévia"
+                              >
+                                Atualizar
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <span className="text-[10px] text-emerald-400 font-mono">Em dia</span>
+                            </div>
+                          )}
                         </td>
                         <td className="py-3 px-4 font-sans">
                           <div className="flex items-center gap-1.5 flex-wrap">
@@ -1411,6 +1442,17 @@ export const AssetInventory: React.FC<AssetInventoryProps> = ({
           </div>
         </div>
       )}
+
+      {/* Modal de Atualização de Firmware com Pedido de Autorização */}
+      <FirmwareUpdateModal
+        isOpen={Boolean(firmwareModalDevice)}
+        device={firmwareModalDevice}
+        onClose={() => setFirmwareModalDevice(null)}
+        onSuccess={(updated) => {
+          setFirmwareModalDevice(null);
+          onRefreshDevices?.();
+        }}
+      />
     </div>
   );
 };

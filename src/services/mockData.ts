@@ -239,140 +239,73 @@ export const INITIAL_DEVICES: NetworkDevice[] = [
     lastSecurityScan: 'Hoje'
   },
   {
-    id: 'real-dns-01',
-    hostname: 'one.one.one.one',
-    ipAddress: '1.1.1.1',
-    macAddress: 'Remote Hop',
-    manufacturer: 'Cloudflare Inc.',
-    deviceType: 'Server',
-    operatingSystem: 'Cloudflare Anycast DNS',
+    id: 'real-gw-20',
+    hostname: 'gw-vlan20.lan',
+    ipAddress: '192.168.20.1',
+    macAddress: '00:11:22:33:44:20',
+    manufacturer: 'LAN Gateway Router (VLAN 20)',
+    deviceType: 'Router',
+    operatingSystem: 'RouterOS / Linux Gateway (VLAN 20)',
     lastSeen: 'Agora mesmo',
     status: 'online',
-    uptimeSeconds: 864000,
-    latencyMs: 2.6,
+    uptimeSeconds: 3628800,
+    latencyMs: 0.52,
     packetLossPercent: 0,
-    subnet: 'External WAN',
-    vlan: 1,
+    subnet: '192.168.20.0/24',
+    vlan: 20,
     openPorts: [53, 443],
     snmpEnabled: false,
-    switchPort: 'eth1 uplink',
+    switchPort: 'eth0 trunk',
     isAuthorized: true,
-    tags: ['DNS', 'WAN', 'Public Resolver'],
-    notes: 'External verified DNS resolver used for WAN connectivity check.',
-    firmwareVersion: 'Anycast Cloud Edge Engine v4.28',
-    latestFirmwareVersion: 'Current Stable',
-    firmwareUpdateStatus: 'up_to_date',
-    firmwareReleaseDate: '2024-06-01',
+    tags: ['Gateway', 'VLAN-20', 'Routing'],
+    notes: 'Interface de gateway e roteamento da sub-rede 192.168.20.0/24.',
     vulnerabilities: [],
     vulnerabilitySummary: { critical: 0, high: 0, medium: 0, low: 0, total: 0 },
     vulnerabilityRiskScore: 0,
     nistRiskScore: 0.0,
-    nistRiskLevel: 'SAFE',
-    cpeMatch: 'cpe:2.3:a:cloudflare:anycast_dns:4.28:*:*:*:*:*:*:*',
-    cveLookupStatus: 'clean',
-    lastSecurityScan: 'Hoje'
-  },
-  {
-    id: 'real-dns-02',
-    hostname: 'dns.google',
-    ipAddress: '8.8.8.8',
-    macAddress: 'Remote Hop',
-    manufacturer: 'Google LLC',
-    deviceType: 'Server',
-    operatingSystem: 'Google Anycast DNS',
-    lastSeen: 'Agora mesmo',
-    status: 'online',
-    uptimeSeconds: 864000,
-    latencyMs: 1.8,
-    packetLossPercent: 0,
-    subnet: 'External WAN',
-    vlan: 1,
-    openPorts: [53, 443],
-    snmpEnabled: false,
-    switchPort: 'eth1 uplink',
-    isAuthorized: true,
-    tags: ['DNS', 'WAN', 'Secondary Resolver'],
-    notes: 'Google Anycast DNS secondary resolver.',
-    firmwareVersion: 'Google Anycast Edge Engine v5.1',
-    latestFirmwareVersion: 'Current Stable',
-    firmwareUpdateStatus: 'up_to_date',
-    firmwareReleaseDate: '2024-06-01',
-    vulnerabilities: [],
-    vulnerabilitySummary: { critical: 0, high: 0, medium: 0, low: 0, total: 0 },
-    vulnerabilityRiskScore: 0,
-    nistRiskScore: 0.0,
-    nistRiskLevel: 'SAFE',
-    cpeMatch: 'cpe:2.3:a:google:anycast_dns:5.1:*:*:*:*:*:*:*',
-    cveLookupStatus: 'clean',
-    lastSecurityScan: 'Hoje'
+    nistRiskLevel: 'SAFE'
   }
 ];
 
 export const INITIAL_SERVER_METRICS: LocalServerMetrics = {
-  serverHostname: 'localhost',
-  ipAddress: '127.0.0.1',
+  serverHostname: 'nexus-node',
+  ipAddress: '192.168.0.13',
   operatingSystem: 'Debian GNU/Linux 12 (bookworm)',
-  kernelVersion: 'Linux 4.19.0-gvisor x86_64',
-  uptimeHours: 1.0,
+  kernelVersion: 'Linux 6.1.0-21-amd64 x86_64',
+  uptimeHours: 360.0,
   collectorVersion: 'nexus-prober-v1.4.2 (Live Linux Kernel)',
   cpu: {
     utilizationPercent: 3.5,
-    cores: 2,
-    loadAverage: [0.0, 0.0, 0.0],
+    cores: 4,
+    loadAverage: [0.12, 0.08, 0.05],
     temperatureCelsius: 38.0
   },
   memory: {
-    totalBytes: 4294967296, // 4.0 GB
-    usedBytes: 858993459,   // ~0.8 GB
-    cachedBytes: 420000000, // ~420 MB
-    freeBytes: 3435973837,  // ~3.4 GB
+    totalBytes: 8589934592, // 8.0 GB
+    usedBytes: 1717986918,  // ~1.6 GB
+    cachedBytes: 1200000000,
+    freeBytes: 6871947674,  // ~6.4 GB
     percentUsed: 20.0
   },
   disk: {
     mountPoint: '/',
-    totalBytes: 202243760128, // 197.5 GB
-    usedBytes: 299462656,     // ~290 MB
-    freeBytes: 201944297472,  // ~197.2 GB
-    percentUsed: 1.0,
+    totalBytes: 256000000000, // 256 GB
+    usedBytes: 32000000000,   // 32 GB
+    freeBytes: 224000000000,
+    percentUsed: 12.5,
     ioReadBps: 2097152,
     ioWriteBps: 1048576
   },
   interfaces: [
     {
-      name: 'lo',
-      ipAddress: '127.0.0.1/8',
-      macAddress: '00:00:00:00:00:00',
-      speedMbps: 10000,
-      rxBytesPerSec: 15467654,
-      txBytesPerSec: 15540356,
-      rxPacketsPerSec: 5193,
-      txPacketsPerSec: 5193,
-      errors: 0,
-      dropped: 0,
-      status: 'up'
-    },
-    {
-      name: 'eth1',
-      ipAddress: '169.254.8.1/32',
-      macAddress: '00:00:00:00:00:00',
+      name: 'eth0',
+      ipAddress: '192.168.0.13/24',
+      macAddress: '00:15:5d:02:11:4a',
       speedMbps: 1000,
       rxBytesPerSec: 35088691,
-      txBytesPerSec: 411470,
+      txBytesPerSec: 28411470,
       rxPacketsPerSec: 29269,
-      txPacketsPerSec: 3305,
-      errors: 0,
-      dropped: 0,
-      status: 'up'
-    },
-    {
-      name: 'eth2',
-      ipAddress: '169.254.9.1/32',
-      macAddress: '42:00:4E:49:43:00',
-      speedMbps: 1000,
-      rxBytesPerSec: 2670812,
-      txBytesPerSec: 5246675,
-      rxPacketsPerSec: 27857,
-      txPacketsPerSec: 27521,
+      txPacketsPerSec: 24305,
       errors: 0,
       dropped: 0,
       status: 'up'
@@ -382,38 +315,38 @@ export const INITIAL_SERVER_METRICS: LocalServerMetrics = {
 
 export const INITIAL_EVENTS: NetworkEvent[] = [
   {
-    id: 'evt-real-01',
-    timestamp: '2026-11-03 01:50:00',
+    id: 'evt-audit-01',
+    timestamp: '2026-11-06 09:30:00',
     deviceId: 'real-gw-01',
-    deviceName: 'gw-default.local',
-    ipAddress: '169.254.169.126',
+    deviceName: 'router.lan',
+    ipAddress: '192.168.0.1',
     eventType: 'snmp_trap',
     severity: 'info',
-    description: 'Real ICMP echo verification to gateway 169.254.169.126 succeeded (RTT: 0.08ms). Network route is nominal.',
+    description: 'Verificação periódica ICMP ao Gateway LAN 192.168.0.1 concluída com sucesso (RTT: 0.42ms). Rota nominal.',
     acknowledged: true,
     acknowledgedBy: 'system'
   },
   {
-    id: 'evt-real-02',
-    timestamp: '2026-11-03 01:48:00',
-    deviceId: 'real-host-01',
-    deviceName: 'localhost',
-    ipAddress: '127.0.0.1',
-    eventType: 'port_state_change',
+    id: 'evt-audit-20',
+    timestamp: '2026-11-06 09:25:00',
+    deviceId: 'real-ap-20',
+    deviceName: 'ap-unifi-office',
+    ipAddress: '192.168.20.15',
+    eventType: 'snmp_trap',
     severity: 'info',
-    description: 'Local web console listener initialized on port 3000. All kernel sockets active.',
+    description: 'Canal de radiofrequência e enlace do ponto de acesso UniFi 192.168.20.15 validados na VLAN 20.',
     acknowledged: true,
     acknowledgedBy: 'system'
   },
   {
-    id: 'evt-real-03',
-    timestamp: '2026-11-03 01:45:00',
-    deviceId: 'real-dns-01',
-    deviceName: 'one.one.one.one',
-    ipAddress: '1.1.1.1',
+    id: 'evt-nas-01',
+    timestamp: '2026-11-06 09:15:00',
+    deviceId: 'real-nas-20',
+    deviceName: 'nas-storage-01',
+    ipAddress: '192.168.20.50',
     eventType: 'host_recovered',
     severity: 'info',
-    description: 'WAN egress connectivity verified through Cloudflare DNS 1.1.1.1 (0% packet loss).',
+    description: 'Servidor de ficheiros Synology NAS 192.168.20.50 com volume de armazenamento e conectividade operacional.',
     acknowledged: true,
     acknowledgedBy: 'system'
   }
@@ -422,74 +355,85 @@ export const INITIAL_EVENTS: NetworkEvent[] = [
 export const INITIAL_SUBNETS: SubnetScanRange[] = [
   {
     id: 'real-sub-1',
-    name: 'Primary LAN Subnet',
+    name: 'Sub-rede Principal LAN (192.168.0.0/24)',
     cidr: '192.168.0.0/24',
     vlan: 1,
-    description: 'Sub-rede física local autorizada (192.168.0.0/24)',
+    description: 'Sub-rede física local autorizada (VLAN 1 - Gateway e Nó NEXUS)',
     isAuthorized: true,
     probeType: 'ARP+ICMP',
     rateLimitPps: 150,
     enabled: true,
-    lastScanned: 'Just now'
+    lastScanned: 'Recentemente'
   },
   {
     id: 'real-sub-2',
-    name: 'Secondary / Management Subnet',
-    cidr: '10.0.0.0/24',
-    vlan: 10,
-    description: 'Sub-rede de gestão secundária (10.0.0.0/24)',
+    name: 'Sub-rede VLAN 20 (192.168.20.0/24)',
+    cidr: '192.168.20.0/24',
+    vlan: 20,
+    description: 'Sub-rede autorizada VLAN 20 (Armazenamento NAS e Wi-Fi UniFi)',
     isAuthorized: true,
     probeType: 'ARP+ICMP',
-    rateLimitPps: 100,
+    rateLimitPps: 150,
     enabled: true,
-    lastScanned: 'Never'
+    lastScanned: 'Recentemente'
   }
 ];
 
 export const INITIAL_TOP_TALKERS: TrafficTalker[] = [
   {
-    ipAddress: '127.0.0.1',
-    hostname: 'localhost',
-    macAddress: '00:00:00:00:00:00',
-    bytesIn: 15467654,
-    bytesOut: 15540356,
-    totalBytes: 31008010,
-    percentage: 48.5,
+    ipAddress: '192.168.0.13',
+    hostname: 'nexus-node',
+    macAddress: '00:15:5d:02:11:4a',
+    bytesIn: 24500000,
+    bytesOut: 18900000,
+    totalBytes: 43400000,
+    percentage: 42.5,
     primaryProtocol: 'HTTP / Web Console (Port 3000)'
   },
   {
-    ipAddress: '169.254.8.1',
-    hostname: 'eth1-internal',
-    macAddress: '00:00:00:00:00:00',
-    bytesIn: 35088691,
-    bytesOut: 411470,
-    totalBytes: 35500161,
-    percentage: 38.2,
-    primaryProtocol: 'VPC Gateway Transit'
+    ipAddress: '192.168.0.1',
+    hostname: 'router.lan',
+    macAddress: '00:11:22:33:44:01',
+    bytesIn: 18200000,
+    bytesOut: 12500000,
+    totalBytes: 30700000,
+    percentage: 30.1,
+    primaryProtocol: 'DNS & Gateway Forwarding'
   },
   {
-    ipAddress: '169.254.9.1',
-    hostname: 'eth2-ingress',
-    macAddress: '42:00:4E:49:43:00',
-    bytesIn: 2670812,
-    bytesOut: 5246675,
-    totalBytes: 7917487,
-    percentage: 13.3,
-    primaryProtocol: 'DNS / HTTPS Metadata'
+    ipAddress: '192.168.20.50',
+    hostname: 'nas-storage-01',
+    macAddress: '00:11:32:9F:8B:22',
+    bytesIn: 12400000,
+    bytesOut: 5600000,
+    totalBytes: 18000000,
+    percentage: 17.6,
+    primaryProtocol: 'SMB / CIFS Storage Backup'
+  },
+  {
+    ipAddress: '192.168.20.15',
+    hostname: 'ap-unifi-office',
+    macAddress: '74:83:C2:55:A1:09',
+    bytesIn: 6800000,
+    bytesOut: 3200000,
+    totalBytes: 10000000,
+    percentage: 9.8,
+    primaryProtocol: 'Wi-Fi 6 Wireless Bridge'
   }
 ];
 
 export const INITIAL_PROTOCOLS: ProtocolStat[] = [
   { protocol: 'HTTP / Web Application (Port 3000)', port: 3000, sharePercent: 52.4, bytesTotal: 28000000, category: 'Web' },
   { protocol: 'DNS Name Resolution (Port 53)', port: 53, sharePercent: 24.1, bytesTotal: 12000000, category: 'Infrastructure' },
-  { protocol: 'ICMP Echo / Diagnostic Probes', port: 1, sharePercent: 14.5, bytesTotal: 7500000, category: 'Management' },
-  { protocol: 'Internal Kernel Sockets', port: 8080, sharePercent: 9.0, bytesTotal: 4500000, category: 'Other' }
+  { protocol: 'SMB / CIFS Storage Traffic (Port 445)', port: 445, sharePercent: 14.5, bytesTotal: 7500000, category: 'File Transfer' },
+  { protocol: 'ICMP Echo / Diagnostic Probes', port: 1, sharePercent: 9.0, bytesTotal: 4500000, category: 'Management' }
 ];
 
 export const INITIAL_CONNECTION_LINKS: ConnectionLink[] = [
-  { sourceId: 'real-host-01', targetId: 'real-gw-01', linkType: 'gateway', speedMbps: 1000, status: 'up', vlan: 1, sourcePort: 'eth2', targetPort: 'default' },
-  { sourceId: 'real-host-01', targetId: 'real-meta-01', linkType: 'ethernet', speedMbps: 1000, status: 'up', vlan: 1, sourcePort: 'eth2', targetPort: 'api' },
-  { sourceId: 'real-host-01', targetId: 'real-dns-01', linkType: 'trunk', speedMbps: 1000, status: 'up', vlan: 1, sourcePort: 'eth1', targetPort: 'wan' }
+  { sourceId: 'real-host-01', targetId: 'real-gw-01', linkType: 'gateway', speedMbps: 1000, status: 'up', vlan: 1, sourcePort: 'eth0', targetPort: 'ether1 (LAN-Core)' },
+  { sourceId: 'real-gw-01', targetId: 'real-gw-20', linkType: 'trunk', speedMbps: 10000, status: 'up', vlan: 20, sourcePort: 'trunk0', targetPort: 'vlan20' },
+  { sourceId: 'real-ap-20', targetId: 'real-gw-20', linkType: 'wireless', speedMbps: 1200, status: 'up', vlan: 20, sourcePort: 'eth0 (PoE)', targetPort: 'ether2 (VLAN-20)' },
+  { sourceId: 'real-nas-20', targetId: 'real-gw-20', linkType: 'ethernet', speedMbps: 10000, status: 'up', vlan: 20, sourcePort: 'bond0 (LACP)', targetPort: 'ether3 (Storage-VLAN20)' }
 ];
 
 export const GENERATE_TIME_SERIES = () => {

@@ -18,6 +18,26 @@ export type NistRiskLevel = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'SAFE';
 
 export type FirmwareUpdateStatus = 'up_to_date' | 'update_available' | 'critical_update' | 'unknown';
 
+export interface FirmwarePackageInfo {
+  deviceId: string;
+  deviceName: string;
+  ipAddress: string;
+  deviceType: string;
+  currentVersion: string;
+  latestVersion: string;
+  updateStatus: FirmwareUpdateStatus;
+  packageName: string;
+  downloadSizeMb: number;
+  sha256: string;
+  vendorCdn: string;
+  releaseDate: string;
+  rebootRequired: boolean;
+  estimatedDowntimeSeconds: number;
+  releaseNotes: string;
+  resolvedCves: string[];
+  improvements: string[];
+}
+
 export interface VulnerabilityItem {
   cveId: string;
   severity: 'critical' | 'high' | 'medium' | 'low';
@@ -82,6 +102,42 @@ export interface NetworkDevice {
 
   // Compliance Policy & CIS Benchmarks
   compliance?: DeviceComplianceSummary;
+
+  // Uptime & Connectivity Monitoring
+  outageCount?: number;
+  lastOutage?: string | null;
+  availabilitySla?: number; // e.g. 99.95
+}
+
+export interface ConnectivityIncident {
+  id: string;
+  timestamp: string;
+  deviceName: string;
+  ipAddress: string;
+  subnet: string;
+  vlan?: number;
+  eventType: 'host_unreachable' | 'packet_loss_spike' | 'host_recovered' | 'connectivity_batch_audit' | 'high_latency';
+  severity: 'critical' | 'warning' | 'info';
+  durationMinutes?: number;
+  packetLossPercent?: number;
+  latencyMs?: number;
+  description: string;
+  acknowledged?: boolean;
+}
+
+export interface SubnetHealthSummary {
+  cidr: string;
+  name: string;
+  vlan: number;
+  totalDevices: number;
+  onlineDevices: number;
+  degradedDevices: number;
+  offlineDevices: number;
+  avgLatencyMs: number;
+  avgPacketLoss: number;
+  uptimeSlaPercent: number;
+  outagesCount: number;
+  lastTestedAt?: string;
 }
 
 export * from './compliance';
@@ -140,9 +196,12 @@ export interface NetworkEvent {
   ipAddress: string;
   eventType: 
     | 'host_down'
+    | 'host_unreachable'
     | 'host_recovered'
     | 'high_latency'
     | 'packet_loss'
+    | 'packet_loss_spike'
+    | 'connectivity_batch_audit'
     | 'new_mac_detected'
     | 'ip_conflict'
     | 'port_state_change'
@@ -156,6 +215,8 @@ export interface NetworkEvent {
   acknowledgedAt?: string;
   resolutionNotes?: string;
 }
+
+export type SubnetConfig = SubnetScanRange;
 
 export interface SubnetScanRange {
   id: string;

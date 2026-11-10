@@ -1,4 +1,4 @@
-import { NetworkDevice, LocalServerMetrics, NetworkEvent, SubnetScanRange, DiscoveryScanJob, TrafficTalker, ProtocolStat, ConnectionLink } from '../types/network';
+import { NetworkDevice, LocalServerMetrics, NetworkEvent, SubnetScanRange, DiscoveryScanJob, TrafficTalker, ProtocolStat, ConnectionLink, FirmwarePackageInfo } from '../types/network';
 import { ApiResponse, BackendConfig, StartScanPayload, DeviceQueryParams } from '../types/api';
 import { FleetComplianceOverview, DeviceComplianceSummary, ComplianceRule } from '../types/compliance';
 import { 
@@ -83,6 +83,12 @@ class NexusApiService {
       ? json.data 
       : INITIAL_DEVICES;
 
+    // Strictly enforce real network subnets: 192.168.0.0/24 and 192.168.20.0/24 only
+    devices = devices.filter(d => 
+      Boolean(d.ipAddress) && 
+      (d.ipAddress.startsWith('192.168.0.') || d.ipAddress.startsWith('192.168.20.'))
+    );
+
     if (params?.search) {
       const s = params.search.toLowerCase();
       devices = devices.filter(d => 
@@ -149,6 +155,90 @@ class NexusApiService {
       packetsReceived: 0,
       output: ['Sem resposta do coletor de ping.']
     };
+  }
+
+  // --- Real Batch Connectivity Prober & Outage Tracking ---
+
+  public async triggerBatchConnectivityTest(subnet?: string, targetIps?: string[]): Promise<{
+    success: boolean;
+    summary: {
+      totalTested: number;
+      onlineCount: number;
+      degradedCount: number;
+      offlineCount: number;
+      avgRttMs: number;
+      testedSubnet: string;
+      outagesCount: number;
+      testedAt: string;
+    };
+    data: NetworkDevice[];
+  }> {
+    try {
+      const json = await safeFetchJson<{
+        success: boolean;
+        summary: any;
+        data: NetworkDevice[];
+      }>('/api/network/connectivity-test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subnet, targetIps })
+      });
+      if (json && json.success) {
+        return json;
+      }
+    } catch (e) {
+      console.error('Batch connectivity test error:', e);
+    }
+
+    return {
+      success: false,
+      summary: {
+        totalTested: 0,
+        onlineCount: 0,
+        degradedCount: 0,
+        offlineCount: 0,
+        avgRttMs: 0,
+        testedSubnet: subnet || 'Todas as Redes',
+        outagesCount: 0,
+        testedAt: new Date().toLocaleTimeString('pt-PT')
+      },
+      data: []
+    };
+  }
+
+  public async simulateOutage(deviceId: string, action: 'drop' | 'recover' | 'degrade'): Promise<{
+    success: boolean;
+    device?: NetworkDevice;
+    error?: string;
+  }> {
+    try {
+      const json = await safeFetchJson<{
+        success: boolean;
+        device?: NetworkDevice;
+        error?: string;
+      }>('/api/network/simulate-outage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deviceId, action })
+      });
+      if (json) return json;
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+    return { success: false, error: 'Falha ao executar simulação' };
+  }
+
+  public async getOutageIncidents(subnet?: string): Promise<{ success: boolean; data: any[] }> {
+    try {
+      const url = subnet ? `/api/network/outage-incidents?subnet=${encodeURIComponent(subnet)}` : '/api/network/outage-incidents';
+      const json = await safeFetchJson<{ success: boolean; data: any[] }>(url);
+      if (json && Array.isArray(json.data)) {
+        return json;
+      }
+    } catch (e) {
+      console.error('Error fetching outages', e);
+    }
+    return { success: true, data: [] };
   }
 
   // --- Monitoring Server Metrics (Host Local - Real Linux Kernel Stats) ---
@@ -531,6 +621,91 @@ class NexusApiService {
     }
 
     throw new Error('Falha ao aplicar remediação de conformidade.');
+  }
+
+  // --- Automated Firmware Management & Permission-Based Updates ---
+
+  public async getFirmwarePackages(): Promise<FirmwarePackageInfo[]> {
+    try {
+      const json = await safeFetchJson<{ success: boolean; data: FirmwarePackageInfo[] }>('/api/firmware/packages');
+      if (json && json.success && Array.isArray(json.data)) {
+        return json.data;
+      }
+    } catch (e) {
+      console.warn('Falha ao obter pacotes de firmware via API', e);
+    }
+    return [];
+  }
+
+  public async updateDeviceFirmware(
+    deviceId: string, 
+    userConfirmed: boolean, 
+    backupConfig: boolean = true
+  ): Promise<{
+    success: boolean;
+    message: string;
+    device: NetworkDevice;
+    updateLog: string[];
+    cvesMitigated: string[];
+  }> {
+    const res = await fetch('/api/firmware/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deviceId, userConfirmed, backupConfig })
+    });
+
+    const json = await res.json();
+    if (!res.ok || !json.success) {
+      throw new Error(json.error || 'Falha na execução da atualização de firmware.');
+    }
+
+    return json;
+  }
+
+  public async batchUpdateFirmware(
+    deviceIds: string[], 
+    userConfirmed: boolean, 
+    backupConfig: boolean = true
+  ): Promise<{
+    success: boolean;
+    message: string;
+    updatedCount: number;
+    results: any[];
+    devices: NetworkDevice[];
+  }> {
+    const res = await fetch('/api/firmware/batch-update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deviceIds, userConfirmed, backupConfig })
+    });
+
+    const json = await res.json();
+    if (!res.ok || !json.success) {
+      throw new Error(json.error || 'Falha na execução da atualização de firmware em lote.');
+    }
+
+    return json;
+  }
+
+  public async remediateAllCompliance(deviceId?: string): Promise<{
+    success: boolean;
+    message: string;
+    remediatedCount: number;
+    remediatedRules: any[];
+    devices: NetworkDevice[];
+  }> {
+    const res = await fetch('/api/compliance/remediate-all', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deviceId })
+    });
+
+    const json = await res.json();
+    if (!res.ok || !json.success) {
+      throw new Error(json.error || 'Falha ao executar melhorias de conformidade.');
+    }
+
+    return json;
   }
 }
 

@@ -24,12 +24,15 @@ import {
   XCircle,
   CheckCircle2,
   AlertTriangle,
-  Sliders
+  Sliders,
+  Download,
+  Sparkles
 } from 'lucide-react';
 import { NetworkDevice, ComplianceRule } from '../../types/network';
 import { Modal } from '../common/Modal';
 import { DeviceStatusBadge } from '../common/StatusBadge';
 import { nexusApi } from '../../services/api';
+import { FirmwareUpdateModal } from '../security/FirmwareUpdateModal';
 
 interface DeviceDetailModalProps {
   device: NetworkDevice | null;
@@ -141,6 +144,28 @@ export const DeviceDetailModal: React.FC<DeviceDetailModalProps> = ({
     }
   };
 
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+  const [isRemediatingAllThis, setIsRemediatingAllThis] = useState(false);
+
+  const handleRemediateAllThisDevice = async () => {
+    setIsRemediatingAllThis(true);
+    try {
+      const res = await nexusApi.remediateAllCompliance(device.id);
+      if (res && res.devices) {
+        const updated = res.devices.find(d => d.id === device.id);
+        if (updated) onDeviceUpdated(updated);
+        setComplianceMsg({
+          text: `Todas as ${res.remediatedCount} melhorias e correções CIS foram aplicadas com sucesso neste ativo!`,
+          type: 'success'
+        });
+      }
+    } catch (e: any) {
+      setComplianceMsg({ text: e.message || 'Falha ao aplicar melhorias.', type: 'error' });
+    } finally {
+      setIsRemediatingAllThis(false);
+    }
+  };
+
   const handleCopyCmd = (cmd: string) => {
     navigator.clipboard.writeText(cmd);
     setCopiedCmd(cmd);
@@ -148,7 +173,8 @@ export const DeviceDetailModal: React.FC<DeviceDetailModalProps> = ({
   };
 
   return (
-    <Modal
+    <>
+      <Modal
       isOpen={isOpen}
       onClose={onClose}
       title={device.hostname}
@@ -457,6 +483,34 @@ export const DeviceDetailModal: React.FC<DeviceDetailModalProps> = ({
               </div>
             </div>
 
+            {/* Banner Interativo de Atualização de Firmware */}
+            {(device.firmwareUpdateStatus === 'update_available' || device.firmwareUpdateStatus === 'critical_update') && (
+              <div className="p-3.5 bg-gradient-to-r from-cyan-950/40 via-slate-900 to-slate-950 rounded-lg border border-cyan-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                      Atualização Oficial Disponível
+                    </span>
+                    <span className="text-xs font-semibold text-slate-100">
+                      {device.latestFirmwareVersion}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400">
+                    Versão instalada: <span className="text-amber-300 font-mono">{device.firmwareVersion || 'v1.0'}</span> → Versão para download: <span className="text-emerald-300 font-mono font-bold">{device.latestFirmwareVersion}</span>
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsUpdateModalOpen(true)}
+                  className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-slate-950 bg-cyan-400 hover:bg-cyan-300 rounded-lg transition-all shadow-md shadow-cyan-500/20 shrink-0 self-start sm:self-auto"
+                >
+                  <Download size={14} />
+                  <span>Atualizar Automaticamente</span>
+                </button>
+              </div>
+            )}
+
             <div>
               <h4 className="text-xs font-semibold text-slate-200 mb-2 flex items-center justify-between">
                 <span>Vulnerabilidades Detetadas ({device.vulnerabilities?.length || 0})</span>
@@ -584,14 +638,27 @@ export const DeviceDetailModal: React.FC<DeviceDetailModalProps> = ({
                   </div>
                 </div>
 
-                <button
-                  onClick={handleAuditCompliance}
-                  disabled={isAuditingCompliance}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 rounded text-xs font-bold font-mono transition-colors disabled:opacity-50 shrink-0 self-end sm:self-auto"
-                >
-                  <RefreshCw size={12} className={isAuditingCompliance ? 'animate-spin' : ''} />
-                  <span>{isAuditingCompliance ? 'Auditando...' : 'Re-auditar Ativo'}</span>
-                </button>
+                <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto flex-wrap">
+                  {(device.compliance?.failedChecks || 0) > 0 && (
+                    <button
+                      onClick={handleRemediateAllThisDevice}
+                      disabled={isRemediatingAllThis}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 rounded text-xs font-bold font-mono transition-colors disabled:opacity-50"
+                      title="Executar todas as melhorias e correções CIS neste ativo"
+                    >
+                      <Wrench size={12} className={isRemediatingAllThis ? 'animate-spin' : ''} />
+                      <span>{isRemediatingAllThis ? 'A Corrigir...' : `Corrigir ${device.compliance?.failedChecks} Falhas`}</span>
+                    </button>
+                  )}
+                  <button
+                    onClick={handleAuditCompliance}
+                    disabled={isAuditingCompliance}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 rounded text-xs font-bold font-mono transition-colors disabled:opacity-50"
+                  >
+                    <RefreshCw size={12} className={isAuditingCompliance ? 'animate-spin' : ''} />
+                    <span>{isAuditingCompliance ? 'Auditando...' : 'Re-auditar Ativo'}</span>
+                  </button>
+                </div>
               </div>
 
               {/* Progress Bar */}
@@ -926,5 +993,17 @@ export const DeviceDetailModal: React.FC<DeviceDetailModalProps> = ({
         )}
       </div>
     </Modal>
+
+    {/* Modal de Atualização de Firmware com Pedido de Autorização */}
+    <FirmwareUpdateModal
+      isOpen={isUpdateModalOpen}
+      device={device}
+      onClose={() => setIsUpdateModalOpen(false)}
+      onSuccess={(updated) => {
+        onDeviceUpdated(updated);
+        setIsUpdateModalOpen(false);
+      }}
+    />
+  </>
   );
 };

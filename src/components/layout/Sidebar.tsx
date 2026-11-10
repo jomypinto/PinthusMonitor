@@ -46,7 +46,7 @@ const NAV_ITEMS: { name: NavSection; label: string; icon: React.ReactNode; count
   { name: 'Firmware & Vulnerabilities', label: 'Firmware e CVEs', icon: <ShieldAlert size={18} />, countKey: 'vulnerabilities' },
   { name: 'Compliance Policies', label: 'Políticas & Compliance', icon: <ShieldCheck size={18} />, countKey: 'compliance' },
   { name: 'Network Monitoring', label: 'Monitorização de Rede', icon: <Activity size={18} /> },
-  { name: 'Network Connections', label: 'Ligações de Rede', icon: <Network size={18} /> },
+  { name: 'Network Connections', label: 'Topologia de Rede', icon: <Network size={18} /> },
   { name: 'Traffic Analysis', label: 'Análise de Tráfego', icon: <BarChart3 size={18} /> },
   { name: 'Events and Alerts', label: 'Eventos e Alertas', icon: <BellRing size={18} />, countKey: 'alerts' },
   { name: 'Reports', label: 'Relatórios', icon: <FileText size={18} /> },

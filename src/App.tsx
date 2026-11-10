@@ -194,8 +194,11 @@ export default function App() {
               <NetworkMonitoring
                 serverMetrics={serverMetrics}
                 devices={devices}
+                subnets={subnets}
+                events={events}
                 timeSeriesData={timeSeriesData}
                 onOpenDeviceDetail={handleOpenDeviceDetail}
+                onRefreshDevices={loadData}
               />
             )}
 

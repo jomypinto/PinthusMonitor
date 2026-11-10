@@ -8,10 +8,10 @@ FROM node:20-bookworm-slim AS builder
 WORKDIR /app
 
 # Copy dependency specifications
-COPY package.json package-lock.json* ./
+COPY package.json package-lock.json ./
 
-# Install full dependencies for building
-RUN npm install
+# Install full dependencies deterministically for building
+RUN npm ci
 
 # Copy source code
 COPY . .
@@ -43,12 +43,14 @@ RUN setcap cap_net_raw+ep /bin/ping 2>/dev/null || chmod u+s /bin/ping
 RUN groupadd -r nexus && useradd -r -g nexus -s /bin/bash -m nexus
 
 # Copy package manifest and install production dependencies only
-COPY package.json ./
-RUN npm install --omit=dev
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
 
 # Copy compiled frontend and backend scripts from builder
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/server.ts ./server.ts
+COPY --from=builder /app/server ./server
+COPY --from=builder /app/src ./src
 COPY --from=builder /app/tsconfig.json ./tsconfig.json
 
 # Install tsx globally in container for running typescript server directly
