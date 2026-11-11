@@ -21,9 +21,9 @@ export interface DeviceQueryParams {
 
 export interface StartScanPayload {
   cidr: string;
-  probeType: 'ARP+ICMP' | 'SYN_SCAN' | 'ICMP_ONLY';
-  rateLimitPps: number;
-  timeoutMs: number;
+  probeType?: 'ARP+ICMP' | 'SYN_SCAN' | 'ICMP_ONLY';
+  rateLimitPps?: number;
+  timeoutMs?: number;
   scanScope?: 'fast' | 'full';
 }
 

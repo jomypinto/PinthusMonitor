@@ -444,8 +444,8 @@ export const NetworkMonitoring: React.FC<NetworkMonitoringProps> = ({
                 <Wifi size={14} />
                 <span>192.168.20.0/24 (VLAN 20)</span>
               </div>
-              <h3 className="text-sm font-semibold text-slate-100 mt-1">Storage & Wi-Fi Corporativo</h3>
-              <p className="text-[11px] text-slate-400 mt-0.5">UniFi APs, Synology NAS, CCTV, IoT</p>
+              <h3 className="text-sm font-semibold text-slate-100 mt-1">Periféricos & Wi-Fi Corporativo</h3>
+              <p className="text-[11px] text-slate-400 mt-0.5">UniFi APs, Impressora de Rede, Periféricos VLAN 20</p>
             </div>
             <button
               onClick={() => handleRunBatchTest('192.168.20.0/24')}

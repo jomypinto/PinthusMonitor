@@ -4,23 +4,23 @@
     "name": "Sub-rede Principal LAN (192.168.0.0/24)",
     "cidr": "192.168.0.0/24",
     "vlan": 1,
-    "description": "Sub-rede física local autorizada (VLAN 1 - Gateway e Nó NEXUS)",
+    "description": "Sub-rede física local autorizada (VLAN 1 - Gateway gwvc-udmpro, Nó NEXUS e QNAP TS-h1277XU-RP)",
     "isAuthorized": true,
     "probeType": "ARP+ICMP",
     "rateLimitPps": 150,
     "enabled": true,
-    "lastScanned": "Recentemente"
+    "lastScanned": "Agora mesmo"
   },
   {
     "id": "sub-lan-20",
     "name": "Sub-rede VLAN 20 (192.168.20.0/24)",
     "cidr": "192.168.20.0/24",
     "vlan": 20,
-    "description": "Sub-rede autorizada VLAN 20 (Armazenamento NAS e Wi-Fi UniFi)",
+    "description": "Sub-rede autorizada VLAN 20 (Impressora Konica Minolta bizhub C257i)",
     "isAuthorized": true,
     "probeType": "ARP+ICMP",
     "rateLimitPps": 150,
     "enabled": true,
-    "lastScanned": "Recentemente"
+    "lastScanned": "Agora mesmo"
   }
 ]

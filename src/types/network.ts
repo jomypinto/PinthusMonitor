@@ -8,10 +8,15 @@ export type DeviceType =
   | 'Switch'
   | 'Firewall'
   | 'Access Point'
+  | 'AccessPoint'
   | 'Workstation'
   | 'NAS / Storage'
+  | 'Storage'
   | 'Printer'
   | 'IoT / Embedded'
+  | 'IoT'
+  | 'Camera'
+  | 'VoIP'
   | 'Virtual Machine';
 
 export type NistRiskLevel = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'SAFE';

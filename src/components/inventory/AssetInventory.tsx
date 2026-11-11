@@ -33,13 +33,20 @@ import {
   Radio,
   SlidersHorizontal,
   CheckCircle,
-  HelpCircle
+  HelpCircle,
+  Plus,
+  Upload,
+  Trash2,
+  Edit3,
+  Radar
 } from 'lucide-react';
 import { NetworkDevice, DeviceType, DeviceStatus } from '../../types/network';
 import { DeviceStatusBadge } from '../common/StatusBadge';
 import { exportDevicesToCsv } from '../../services/exportService';
 import { nexusApi } from '../../services/api';
 import { FirmwareUpdateModal } from '../security/FirmwareUpdateModal';
+import { DeviceFormModal } from './DeviceFormModal';
+import { DeviceImportModal } from './DeviceImportModal';
 
 interface AssetInventoryProps {
   devices: NetworkDevice[];
@@ -85,6 +92,76 @@ export const AssetInventory: React.FC<AssetInventoryProps> = ({
     cleanCount: number;
   } | null>(null);
   const [individualCveScanId, setIndividualCveScanId] = useState<string | null>(null);
+
+  // Device Management Modals & Global Network Sweep State
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingDevice, setEditingDevice] = useState<NetworkDevice | null>(null);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isScanningAllSubnets, setIsScanningAllSubnets] = useState(false);
+  const [scanFeedback, setScanFeedback] = useState<string | null>(null);
+
+  // Full sweep trigger for 192.168.0.0/24 & 192.168.20.0/24
+  const handleScanAllSubnets = async () => {
+    setIsScanningAllSubnets(true);
+    setScanFeedback('A sondar todos os ativos na rede 192.168.0.0/24...');
+    try {
+      await nexusApi.triggerDiscoveryScan({
+        cidr: '192.168.0.0/24',
+        probeType: 'ARP+ICMP',
+        rateLimitPps: 100,
+        scanScope: 'full'
+      });
+
+      setScanFeedback('A sondar todos os ativos na rede 192.168.20.0/24...');
+      await nexusApi.triggerDiscoveryScan({
+        cidr: '192.168.20.0/24',
+        probeType: 'ARP+ICMP',
+        rateLimitPps: 100,
+        scanScope: 'full'
+      });
+
+      setScanFeedback('Sondagem concluída! Todos os ativos físicos foram identificados e catalogados.');
+      onRefreshDevices();
+      setTimeout(() => setScanFeedback(null), 5000);
+    } catch (err: any) {
+      setScanFeedback(`Erro na identificação: ${err.message || 'Falha de varredura'}`);
+    } finally {
+      setIsScanningAllSubnets(false);
+    }
+  };
+
+  // Delete device with confirmation
+  const handleDeleteDevice = async (device: NetworkDevice, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (device.ipAddress === '192.168.0.1' || device.ipAddress === '192.168.0.13') {
+      alert('Não é permitido remover nós centrais de infraestrutura (Gateway UDM-Pro ou Nó de Monitorização).');
+      return;
+    }
+
+    const confirmMsg = `Tem a certeza que deseja remover o ativo ${device.hostname} (${device.ipAddress}) do inventário físico?`;
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      await nexusApi.deleteDevice(device.id);
+      setDeviceList(prev => prev.filter(d => d.id !== device.id));
+      onRefreshDevices();
+    } catch (err: any) {
+      alert(`Erro ao remover dispositivo: ${err.message}`);
+    }
+  };
+
+  const handleDeviceSaved = (savedDevice: NetworkDevice) => {
+    setDeviceList(prev => {
+      const idx = prev.findIndex(d => d.id === savedDevice.id || d.ipAddress === savedDevice.ipAddress);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = savedDevice;
+        return next;
+      }
+      return [savedDevice, ...prev];
+    });
+    onRefreshDevices();
+  };
 
   // Sync when parent prop changes
   React.useEffect(() => {
@@ -438,22 +515,62 @@ export const AssetInventory: React.FC<AssetInventoryProps> = ({
               </button>
             </div>
 
+            {/* Sweep All Physical Assets Button */}
+            <button
+              onClick={handleScanAllSubnets}
+              disabled={isScanningAllSubnets}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-500 text-slate-950 rounded-md transition-colors shadow-sm"
+              title="Disparar varredura para identificar todos os ativos físicos em 192.168.0.0/24 e 192.168.20.0/24"
+            >
+              {isScanningAllSubnets ? (
+                <>
+                  <RefreshCw size={13} className="animate-spin text-slate-950" />
+                  <span>A Identificar Ativos...</span>
+                </>
+              ) : (
+                <>
+                  <Radar size={13} />
+                  <span>Identificar Todos os Ativos</span>
+                </>
+              )}
+            </button>
+
+            {/* Add Asset Button */}
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-cyan-600 hover:bg-cyan-500 text-slate-950 rounded-md transition-colors shadow-sm"
+              title="Registar manualmente um novo ativo físico nas sub-redes reais"
+            >
+              <Plus size={13} />
+              <span>Adicionar Ativo</span>
+            </button>
+
+            {/* Import Leases / ARP Button */}
+            <button
+              onClick={() => setIsImportModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 rounded-md transition-colors"
+              title="Importar em lote de leases DHCP ou tabela ARP"
+            >
+              <Upload size={13} />
+              <span>Importar Leases</span>
+            </button>
+
             {/* Batch Ping Probe Button */}
             <button
               onClick={handleBatchProbeAll}
               disabled={isBatchProbing}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-800 disabled:text-slate-500 text-slate-950 rounded-md transition-colors shadow-sm"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 disabled:bg-slate-800 disabled:text-slate-500 text-slate-200 border border-slate-700 rounded-md transition-colors shadow-sm"
               title="Testar ping em tempo real para todos os ativos listados"
             >
               {isBatchProbing ? (
                 <>
-                  <RefreshCw size={13} className="animate-spin text-slate-950" />
+                  <RefreshCw size={13} className="animate-spin text-cyan-400" />
                   <span>Sondando ({batchProgress?.current}/{batchProgress?.total})...</span>
                 </>
               ) : (
                 <>
-                  <Activity size={13} />
-                  <span>Sondar Todos os Ativos</span>
+                  <Activity size={13} className="text-cyan-400" />
+                  <span>Sondar Ping</span>
                 </>
               )}
             </button>
@@ -473,7 +590,7 @@ export const AssetInventory: React.FC<AssetInventoryProps> = ({
               ) : (
                 <>
                   <ShieldAlert size={13} className="text-rose-200" />
-                  <span>Automated NIST CVE Lookup</span>
+                  <span>NIST CVE Lookup</span>
                 </>
               )}
             </button>
@@ -497,6 +614,19 @@ export const AssetInventory: React.FC<AssetInventoryProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Global Sweep Feedback Banner */}
+        {scanFeedback && (
+          <div className="mt-3 p-3 bg-emerald-950/50 border border-emerald-800/60 rounded-md flex items-center justify-between text-xs text-emerald-300 font-mono">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />
+              <span>{scanFeedback}</span>
+            </div>
+            <button onClick={() => setScanFeedback(null)} className="text-slate-400 hover:text-slate-200 text-xs">
+              ✕
+            </button>
+          </div>
+        )}
 
         {/* NIST CVE Lookup Banner */}
         {cveLookupSummary && (
@@ -1123,6 +1253,26 @@ export const AssetInventory: React.FC<AssetInventoryProps> = ({
                     </button>
 
                     <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingDevice(device);
+                      }}
+                      className="p-1.5 px-2 bg-slate-950 hover:bg-slate-800 text-slate-300 hover:text-cyan-400 border border-slate-800 hover:border-slate-700 rounded text-xs transition-colors"
+                      title="Editar detalhes do ativo"
+                    >
+                      <Edit3 size={12} />
+                    </button>
+
+                    <button
+                      onClick={(e) => handleDeleteDevice(device, e)}
+                      disabled={device.ipAddress === '192.168.0.1' || device.ipAddress === '192.168.0.13'}
+                      className="p-1.5 px-2 bg-slate-950 hover:bg-slate-800 text-slate-400 hover:text-rose-400 border border-slate-800 hover:border-rose-800/60 rounded text-xs transition-colors disabled:opacity-30 disabled:hover:text-slate-500"
+                      title="Remover ativo do inventário"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+
+                    <button
                       onClick={() => onOpenDeviceDetail(device)}
                       className="px-3 py-1.5 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 rounded text-xs font-medium transition-colors"
                     >
@@ -1366,6 +1516,24 @@ export const AssetInventory: React.FC<AssetInventoryProps> = ({
                               <span>CVE</span>
                             </button>
                             <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingDevice(device);
+                              }}
+                              className="p-1 px-1.5 text-xs text-slate-400 hover:text-cyan-400 hover:bg-slate-800 rounded border border-slate-800 transition-colors"
+                              title="Editar detalhes do ativo"
+                            >
+                              <Edit3 size={11} />
+                            </button>
+                            <button
+                              onClick={(e) => handleDeleteDevice(device, e)}
+                              disabled={device.ipAddress === '192.168.0.1' || device.ipAddress === '192.168.0.13'}
+                              className="p-1 px-1.5 text-xs text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded border border-slate-800 transition-colors disabled:opacity-30 disabled:hover:text-slate-500"
+                              title="Remover ativo do inventário"
+                            >
+                              <Trash2 size={11} />
+                            </button>
+                            <button
                               onClick={() => onOpenDeviceDetail(device)}
                               className="px-2.5 py-1 text-xs text-cyan-400 hover:text-cyan-300 hover:bg-slate-800 rounded font-medium transition-colors"
                             >
@@ -1451,6 +1619,33 @@ export const AssetInventory: React.FC<AssetInventoryProps> = ({
         onSuccess={(updated) => {
           setFirmwareModalDevice(null);
           onRefreshDevices?.();
+        }}
+      />
+
+      {/* Modal de Adicionar Ativo */}
+      <DeviceFormModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSuccess={handleDeviceSaved}
+        mode="create"
+      />
+
+      {/* Modal de Editar Ativo */}
+      <DeviceFormModal
+        isOpen={Boolean(editingDevice)}
+        initialDevice={editingDevice}
+        onClose={() => setEditingDevice(null)}
+        onSuccess={handleDeviceSaved}
+        mode="edit"
+      />
+
+      {/* Modal de Importação em Lote de Leases DHCP / ARP */}
+      <DeviceImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onImportComplete={() => {
+          setIsImportModalOpen(false);
+          onRefreshDevices();
         }}
       />
     </div>

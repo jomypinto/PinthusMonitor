@@ -5,7 +5,8 @@ export function evaluateDeviceCompliance(dev: any): DeviceComplianceSummary {
   const isHost = ip === '192.168.0.13' || dev.id === 'real-host-01' || dev.hostname?.includes('nexus') || dev.manufacturer?.includes('NEXUS');
   const isGw = dev.deviceType === 'Router' || ip.endsWith('.1') || dev.id === 'real-gw-01';
   const isAp = dev.deviceType === 'Access Point' || dev.deviceType === 'AccessPoint' || ip.endsWith('.15') || dev.id === 'real-ap-20';
-  const isNas = dev.deviceType === 'NAS / Storage' || dev.deviceType === 'Storage' || ip.endsWith('.50') || dev.id === 'real-nas-20';
+  const isNas = dev.deviceType === 'NAS / Storage' || dev.deviceType === 'Storage' || ip === '192.168.0.2' || dev.id === 'real-nas-01' || dev.hostname?.includes('qnap');
+  const isPrinter = dev.deviceType === 'Printer' || ip === '192.168.20.10' || dev.id === 'real-printer-20' || dev.hostname?.includes('printer');
   const isDns = ip === '1.1.1.1' || ip === '8.8.8.8';
 
   // If the device already has overridden rules (e.g. from remediation), reuse them if available
@@ -188,24 +189,111 @@ export function evaluateDeviceCompliance(dev: any): DeviceComplianceSummary {
       }
     ];
   } else if (isGw) {
-    baseRules = [
-      {
-        id: 'CIS-ROS-1.1',
-        standard: 'CIS_LEVEL_1',
-        benchmarkName: 'CIS RouterOS & Network Device Benchmark v2.1',
-        title: 'Desativar serviço de gestão remota Telnet (Porta 23)',
-        category: 'Network Services',
-        parameter: '/ip service telnet',
-        currentValue: 'enabled (Porta 23 aberta)',
-        expectedValue: 'disabled',
-        status: 'non_compliant',
-        severity: 'critical',
-        cisSection: '1.1',
-        rationale: 'O protocolo Telnet transmite comandos e credenciais em texto claro na rede local, permitindo que um sniffer intercete a senha do router.',
-        auditCommand: '/ip service print where name=telnet',
-        remediationCommand: '/ip service disable telnet',
-        impactDescription: 'Elimina o vetor de interceção não encriptado na rede.'
-      },
+    const isUdm = dev.hostname?.includes('udm') || dev.manufacturer?.includes('Ubiquiti') || ip === '192.168.0.1' || ip === '192.16.0.1';
+    if (isUdm) {
+      baseRules = [
+        {
+          id: 'CIS-UDM-1.1',
+          standard: 'CIS_LEVEL_1',
+          benchmarkName: 'CIS Ubiquiti UniFi OS Benchmark v1.2 (UDM-Pro)',
+          title: 'Forçar transporte seguro HTTPS com TLS 1.3 na consola Web do UniFi OS',
+          category: 'Network Services',
+          parameter: 'UniFi OS Web Console HTTPS Enforce',
+          currentValue: 'enforced (TLS 1.3 porta 443)',
+          expectedValue: 'enforced',
+          status: 'compliant',
+          severity: 'critical',
+          cisSection: '1.1',
+          rationale: 'O acesso à consola administrativa gwvc-udmpro deve forçar cifragem moderna TLS para evitar interceção de credenciais de gateway.',
+          auditCommand: 'curl -kI https://192.168.0.1/ | grep -i server',
+          remediationCommand: 'UniFi OS > Settings > System > Advanced > Enforce HTTPS.'
+        },
+        {
+          id: 'CIS-UDM-2.1',
+          standard: 'CIS_LEVEL_1',
+          benchmarkName: 'CIS Ubiquiti UniFi OS Benchmark v1.2 (UDM-Pro)',
+          title: 'Exigir autenticação multi-fator (2FA/MFA) na consola administrativa gwvc-udmpro',
+          category: 'Authentication & Passwords',
+          parameter: 'UniFi UI 2-Factor Authentication',
+          currentValue: 'enforced (Contas com TOTP ativo)',
+          expectedValue: 'enforced',
+          status: 'compliant',
+          severity: 'high',
+          cisSection: '2.1',
+          rationale: 'O controlo do gateway UDM-Pro requer 2FA para proteger a infraestrutura contra ataques de dicionário e credenciais vazadas.',
+          auditCommand: 'ubnt-account-audit --check-mfa',
+          remediationCommand: 'UniFi OS Console > Admins > Edit Admin > Enforce MFA.'
+        },
+        {
+          id: 'CIS-UDM-3.1',
+          standard: 'CIS_LEVEL_1',
+          benchmarkName: 'CIS Ubiquiti UniFi OS Benchmark v1.2 (UDM-Pro)',
+          title: 'Ativar motor avançado de deteção e prevenção de intrusões (IPS/IDS Suricata)',
+          category: 'Routing & Firewalls',
+          parameter: 'Suricata IPS/IDS Cyber Threat Management',
+          currentValue: 'active (Bloqueio automático nível 5 ativado)',
+          expectedValue: 'active',
+          status: 'compliant',
+          severity: 'high',
+          cisSection: '3.1',
+          rationale: 'O motor IPS do UDM-Pro inspeciona tráfego malicioso e bloqueia automaticamente hosts comprometidos e scanners.',
+          auditCommand: 'systemctl status suricata',
+          remediationCommand: 'UniFi Network > Settings > Security > Threat Management > Detect and Block.'
+        },
+        {
+          id: 'CIS-UDM-4.1',
+          standard: 'CIS_LEVEL_1',
+          benchmarkName: 'CIS Ubiquiti UniFi OS Benchmark v1.2 (UDM-Pro)',
+          title: 'Ativar DNS Shield (DNS-over-HTTPS) para mitigar espionagem de tráfego',
+          category: 'Network Services',
+          parameter: 'UniFi DNS Shield (DoH)',
+          currentValue: 'disabled (DNS legado porta 53)',
+          expectedValue: 'enabled (DoH com Cloudflare / Quad9)',
+          status: 'non_compliant',
+          severity: 'medium',
+          cisSection: '4.1',
+          rationale: 'Consultas DNS sem cifra expõem domínios acedidos pela rede a fornecedores upstream e man-in-the-middle.',
+          auditCommand: 'netstat -tuln | grep :853',
+          remediationCommand: 'UniFi Network > Settings > Security > DNS Shield > Enable (Cloudflare/Quad9).',
+          impactDescription: 'Todas as resoluções DNS do gateway serão cifradas através de DNS-over-HTTPS.'
+        },
+        {
+          id: 'CIS-UDM-5.1',
+          standard: 'CIS_LEVEL_1',
+          benchmarkName: 'CIS Ubiquiti UniFi OS Benchmark v1.2 (UDM-Pro)',
+          title: 'Restringir acesso SSH na consola UDM-Pro e proibir login por palavra-passe simples',
+          category: 'Access Control',
+          parameter: 'UDM-Pro SSH Authentication Mode',
+          currentValue: 'password_allowed (Permite senha)',
+          expectedValue: 'public_key_only (Apenas chave pública autorizada)',
+          status: 'non_compliant',
+          severity: 'high',
+          cisSection: '5.1',
+          rationale: 'O acesso SSH root ao UDM-Pro deve ser condicionado a chaves criptográficas SSH para impedir ataques de força bruta.',
+          auditCommand: 'grep -Ei "^PasswordAuthentication" /etc/ssh/sshd_config',
+          remediationCommand: 'UniFi OS > Settings > System > Advanced > SSH > Adicionar chave pública e desativar password.',
+          impactDescription: 'Apenas operadores com a chave SSH autorizada conseguirão abrir sessão no gateway.'
+        }
+      ];
+    } else {
+      baseRules = [
+        {
+          id: 'CIS-ROS-1.1',
+          standard: 'CIS_LEVEL_1',
+          benchmarkName: 'CIS RouterOS & Network Device Benchmark v2.1',
+          title: 'Desativar serviço de gestão remota Telnet (Porta 23)',
+          category: 'Network Services',
+          parameter: '/ip service telnet',
+          currentValue: 'enabled (Porta 23 aberta)',
+          expectedValue: 'disabled',
+          status: 'non_compliant',
+          severity: 'critical',
+          cisSection: '1.1',
+          rationale: 'O protocolo Telnet transmite comandos e credenciais em texto claro na rede local, permitindo que um sniffer intercete a senha do router.',
+          auditCommand: '/ip service print where name=telnet',
+          remediationCommand: '/ip service disable telnet',
+          impactDescription: 'Elimina o vetor de interceção não encriptado na rede.'
+        },
       {
         id: 'CIS-ROS-1.2',
         standard: 'CIS_LEVEL_1',
@@ -324,6 +412,7 @@ export function evaluateDeviceCompliance(dev: any): DeviceComplianceSummary {
         remediationCommand: '/ip ssh set strong-crypto=yes'
       }
     ];
+    }
   } else if (isAp) {
     baseRules = [
       {
@@ -414,101 +503,185 @@ export function evaluateDeviceCompliance(dev: any): DeviceComplianceSummary {
       {
         id: 'CIS-NAS-1.1',
         standard: 'CIS_LEVEL_1',
-        benchmarkName: 'CIS Storage & NAS Hardening Benchmark v1.3',
+        benchmarkName: 'CIS Storage & NAS Hardening Benchmark v1.3 (QNAP QuTS hero / TS-h1277XU-RP)',
         title: 'Desativar a conta de administrador padrão "admin"',
         category: 'Authentication & Passwords',
-        parameter: 'Synology admin account state',
-        currentValue: 'disabled (Desativada)',
+        parameter: 'QNAP QuTS hero admin system account state',
+        currentValue: 'disabled (Desativada, usando utilizador gestor)',
         expectedValue: 'disabled',
         status: 'compliant',
         severity: 'high',
         cisSection: '1.1',
-        rationale: 'A desativação do utilizador padrão admin mitiga ataques automáticos de dicionário.',
-        auditCommand: 'synouser --get admin',
-        remediationCommand: 'Painel de Controlo > Utilizador e Grupo > admin > Desativar conta.'
+        rationale: 'A desativação do utilizador padrão admin no QuTS hero mitiga ataques automáticos de dicionário e força bruta.',
+        auditCommand: 'qcli_user -l | grep admin',
+        remediationCommand: 'QuTS hero Painel de Controlo > Privilégio > Utilizadores > admin > Desativar esta conta.'
       },
       {
         id: 'CIS-NAS-2.1',
         standard: 'CIS_LEVEL_1',
-        benchmarkName: 'CIS Storage & NAS Hardening Benchmark v1.3',
-        title: 'Desativar completamente o protocolo legado SMBv1',
+        benchmarkName: 'CIS Storage & NAS Hardening Benchmark v1.3 (QNAP QuTS hero / TS-h1277XU-RP)',
+        title: 'Desativar completamente o protocolo legado SMBv1 nas partilhas ZFS',
         category: 'Network Services',
-        parameter: 'SMB Min Protocol',
+        parameter: 'QuTS hero SMB Min Protocol',
         currentValue: 'SMB2 mínimo (SMBv1 desativado)',
         expectedValue: 'SMB2 ou SMB3 mínimo',
         status: 'compliant',
         severity: 'critical',
         cisSection: '2.1',
-        rationale: 'O SMBv1 é altamente vulnerável a ataques de exploração remota de memória (como EternalBlue / WannaCry).',
-        auditCommand: 'synoservice --get-smb-min-protocol',
-        remediationCommand: 'Painel de Controlo > Serviços de Ficheiros > SMB > Definições Avançadas > Protocolo SMB Mínimo: SMB2.'
+        rationale: 'O SMBv1 é vulnerável a ataques de exploração remota de memória (WannaCry / EternalBlue).',
+        auditCommand: 'getcfg smb "min protocol" -f /etc/config/smb.conf',
+        remediationCommand: 'QuTS hero Painel de Controlo > Rede e Serviços de Ficheiros > Win/Mac/NFS > Opções Avançadas > Versão mais baixa de SMB: SMB 2.'
       },
       {
         id: 'CIS-NAS-3.1',
         standard: 'CIS_LEVEL_1',
-        benchmarkName: 'CIS Storage & NAS Hardening Benchmark v1.3',
-        title: 'Exigir Autenticação de Dois Fatores (2FA) para Administradores',
+        benchmarkName: 'CIS Storage & NAS Hardening Benchmark v1.3 (QNAP QuTS hero / TS-h1277XU-RP)',
+        title: 'Exigir Autenticação de Dois Passos (2FA) no QuTS hero para Administradores',
         category: 'Authentication & Passwords',
-        parameter: '2-Factor Authentication Enforcement',
+        parameter: 'QuTS hero 2-Step Verification Enforcement',
         currentValue: 'optional (Apenas utilizadores individuais ativaram)',
         expectedValue: 'enforced para todo o grupo de administradores',
         status: 'non_compliant',
         severity: 'high',
         cisSection: '3.1',
-        rationale: 'O acesso a repositórios de dados corporativos e backups exige verificação multi-fator para prevenir intrusões por senhas comprometidas.',
-        auditCommand: 'synosecurity --get-2fa-status',
-        remediationCommand: 'Painel de Controlo > Segurança > Conta > Aplicar verificação em 2 passos para os seguintes utilizadores ou grupos > Selecionar "administrators".',
-        impactDescription: 'Todos os administradores do NAS deverão associar uma app de autenticação (TOTP) no próximo login.'
+        rationale: 'O acesso a repositórios de dados corporativos e backups exige verificação multi-fator para prevenir intrusões por credenciais comprometidas.',
+        auditCommand: 'getcfg System "Enforce 2-Step" -f /etc/config/uLinux.conf',
+        remediationCommand: 'QuTS hero Painel de Controlo > Sistema > Segurança > Verificação em 2 passos > Impor para administradores.',
+        impactDescription: 'Todos os administradores do NAS QNAP TS-h1277XU-RP deverão associar uma app de autenticação (TOTP) no próximo login.'
       },
       {
         id: 'CIS-NAS-4.2',
         standard: 'CIS_LEVEL_1',
-        benchmarkName: 'CIS Storage & NAS Hardening Benchmark v1.3',
-        title: 'Desativar serviço FTP não encriptado na porta 21',
+        benchmarkName: 'CIS Storage & NAS Hardening Benchmark v1.3 (QNAP QuTS hero / TS-h1277XU-RP)',
+        title: 'Desativar serviço Telnet e forçar acesso seguro via SSH',
         category: 'Network Services',
-        parameter: 'FTP Service Plaintext',
-        currentValue: 'enabled na porta 21',
-        expectedValue: 'disabled (Usar exclusivamente SFTP ou FTPS)',
-        status: 'non_compliant',
+        parameter: 'QuTS hero Telnet Service',
+        currentValue: 'disabled (Desativado na porta 23)',
+        expectedValue: 'disabled',
+        status: 'compliant',
         severity: 'high',
         cisSection: '4.2',
-        rationale: 'O serviço de FTP comum envia ficheiros e palavras-passe em texto limpo pela rede interna.',
-        auditCommand: 'netstat -tuln | grep :21',
-        remediationCommand: 'Painel de Controlo > Serviços de Ficheiros > FTP > Desmarcar "Ativar serviço de FTP (sem encriptação)".',
-        impactDescription: 'Clientes de transferência devem usar SFTP sobre a porta SSH ou FTPS com TLS.'
+        rationale: 'O Telnet transmite credenciais administrativas em texto limpo pela rede interna.',
+        auditCommand: 'getcfg Telnet "Enable" -f /etc/config/uLinux.conf',
+        remediationCommand: 'QuTS hero Painel de Controlo > Rede e Serviços de Ficheiros > Telnet/SSH > Desmarcar "Permitir ligação Telnet".'
       },
       {
         id: 'CIS-NAS-5.1',
         standard: 'CIS_LEVEL_1',
-        benchmarkName: 'CIS Storage & NAS Hardening Benchmark v1.3',
-        title: 'Garantir proteção contra força bruta (Auto Block)',
+        benchmarkName: 'CIS Storage & NAS Hardening Benchmark v1.3 (QNAP QuTS hero / TS-h1277XU-RP)',
+        title: 'Garantir proteção contra força bruta ativa no QuFirewall / Network Access Protection',
         category: 'Access Control',
-        parameter: 'Synology Auto Block',
-        currentValue: 'active (5 tentativas falhadas em 10 minutos)',
+        parameter: 'QNAP Network Access Protection',
+        currentValue: 'active (Bloqueio após 5 tentativas falhadas em 5 min)',
         expectedValue: 'active',
         status: 'compliant',
         severity: 'high',
         cisSection: '5.1',
-        rationale: 'Bloqueia endereços IP após um número pré-definido de tentativas falhadas de autenticação.',
-        auditCommand: 'synosecurity --get-autoblock-status',
-        remediationCommand: 'Painel de Controlo > Segurança > Bloqueio Automático > Ativar.'
+        rationale: 'Bloqueia endereços IP após um número pré-definido de tentativas falhadas de autenticação via SSH, HTTP, CIFS ou FTP.',
+        auditCommand: 'getcfg "Auto Block" "Enable" -f /etc/config/uLinux.conf',
+        remediationCommand: 'QuTS hero Painel de Controlo > Sistema > Segurança > Proteção do Acesso à Rede > Ativar.'
       },
       {
         id: 'CIS-NAS-6.3',
         standard: 'CIS_LEVEL_1',
-        benchmarkName: 'CIS Storage & NAS Hardening Benchmark v1.3',
-        title: 'Forçar cifragem de transporte em partilhas de ficheiros SMB',
+        benchmarkName: 'CIS Storage & NAS Hardening Benchmark v1.3 (QNAP QuTS hero / TS-h1277XU-RP)',
+        title: 'Forçar cifragem de transporte e redirecionamento HTTPS no Portal QuTS hero',
         category: 'Network Services',
-        parameter: 'SMB Transport Encryption',
-        currentValue: 'disabled na partilha corporativa /dados',
-        expectedValue: 'enabled (Cifragem de tráfego ativada)',
+        parameter: 'QuTS hero SMB & Web HTTPS Transport Encryption',
+        currentValue: 'disabled (Permite HTTP inseguro na porta 8080)',
+        expectedValue: 'enabled (Forçar HTTPS na porta 443 / 8081)',
         status: 'non_compliant',
         severity: 'medium',
         cisSection: '6.3',
-        rationale: 'Sem cifragem de transporte, dados corporativos e ficheiros em trânsito podem ser intercetados na rede local.',
-        auditCommand: 'smbstatus | grep -i encryption',
-        remediationCommand: 'Painel de Controlo > Pasta Partilhada > Selecionar Pasta > Editar > Avançadas > Cifragem de transferência de ficheiros: Forçar.',
-        impactDescription: 'Clientes Windows/Mac sem suporte a cifragem SMB3 não conseguirão montar a partilha.'
+        rationale: 'Sem cifragem forçada, a sessão web administrativa do QuTS hero pode ser intercetada em trânsito.',
+        auditCommand: 'getcfg System "Force SSL" -f /etc/config/uLinux.conf',
+        remediationCommand: 'QuTS hero Painel de Controlo > Sistema > Definições Gerais > Administração do Sistema > Marcar "Forçar apenas ligação segura (HTTPS)".',
+        impactDescription: 'O acesso HTTP à porta 8080 será redirecionado para a porta segura HTTPS.'
+      }
+    ];
+  } else if (isPrinter) {
+    baseRules = [
+      {
+        id: 'CIS-PRN-1.1',
+        standard: 'CIS_LEVEL_1',
+        benchmarkName: 'CIS Network Device & Peripheral Benchmark v1.1 (Konica Minolta bizhub C257i)',
+        title: 'Desativar acesso Web Connection não encriptado (HTTP porta 80) e forçar HTTPS',
+        category: 'Network Services',
+        parameter: 'Konica Minolta Web Connection HTTP/HTTPS',
+        currentValue: 'HTTP ativo na porta 80 (HTTPS disponível na 443)',
+        expectedValue: 'Apenas HTTPS (Porta 443) com redirecionamento',
+        status: 'non_compliant',
+        severity: 'high',
+        cisSection: '1.1',
+        rationale: 'A consola Web Connection da Konica Minolta bizhub C257i transmite credenciais de operador e utilizador em texto limpo quando acedida por HTTP.',
+        auditCommand: 'curl -I http://192.168.20.10/ | grep -i location',
+        remediationCommand: 'Web Connection bizhub > Definições de Rede > Definições do Servidor HTTP > Definir "Apenas HTTPS (SSL/TLS)".',
+        impactDescription: 'A consola web passa a responder exclusivamente por HTTPS cifrado.'
+      },
+      {
+        id: 'CIS-PRN-2.1',
+        standard: 'CIS_LEVEL_1',
+        benchmarkName: 'CIS Network Device & Peripheral Benchmark v1.1 (Konica Minolta bizhub C257i)',
+        title: 'Garantir alteração da palavra-passe de administrador padrão (CE/Admin Password)',
+        category: 'Authentication & Passwords',
+        parameter: 'Konica Minolta Administrator Password',
+        currentValue: 'configured (Palavra-passe forte definida)',
+        expectedValue: 'configured',
+        status: 'compliant',
+        severity: 'critical',
+        cisSection: '2.1',
+        rationale: 'A utilização da credencial padrão de fábrica (12345678/1234567812345678) permite acesso irrestrito às definições da impressora.',
+        auditCommand: 'snmpget -v3 192.168.20.10 kmAdminAuthStatus',
+        remediationCommand: 'Web Connection bizhub > Modo Administrador > Segurança > Palavra-passe do Administrador > Alterar.'
+      },
+      {
+        id: 'CIS-PRN-3.1',
+        standard: 'CIS_LEVEL_1',
+        benchmarkName: 'CIS Network Device & Peripheral Benchmark v1.1 (Konica Minolta bizhub C257i)',
+        title: 'Desativar protocolos legados de descoberta e difusão (Bonjour / AppleTalk / SNMPv1)',
+        category: 'Network Services',
+        parameter: 'Konica Minolta Legacy Peripheral Protocols',
+        currentValue: 'Bonjour ativo (mDNS multicast ativo)',
+        expectedValue: 'disabled (Apenas DNS unicast e IPPS)',
+        status: 'non_compliant',
+        severity: 'medium',
+        cisSection: '3.1',
+        rationale: 'Protocolos de broadcast e descoberta automática expõem informações da impressora para além da VLAN 20 autorizada.',
+        auditCommand: 'nmap -sU -p 5353 192.168.20.10',
+        remediationCommand: 'Web Connection bizhub > Definições de Rede > Definições Bonjour > Desativar; Definições SNMP > Desativar SNMPv1/v2c público.',
+        impactDescription: 'Descoberta automática mDNS da impressora é desativada; computadores devem imprimir por IP/DNS direto.'
+      },
+      {
+        id: 'CIS-PRN-4.1',
+        standard: 'CIS_LEVEL_1',
+        benchmarkName: 'CIS Network Device & Peripheral Benchmark v1.1 (Konica Minolta bizhub C257i)',
+        title: 'Forçar cifra TLS 1.2 ou superior no serviço IPPS e OpenAPI (Portas 631 e 50001)',
+        category: 'Network Services',
+        parameter: 'Konica Minolta TLS Protocol Version',
+        currentValue: 'TLS 1.2 / TLS 1.3 obrigatório',
+        expectedValue: 'TLS 1.2+',
+        status: 'compliant',
+        severity: 'high',
+        cisSection: '4.1',
+        rationale: 'Garante que os trabalhos de impressão confidenciais e integrações OpenAPI são transmitidos de forma encriptada.',
+        auditCommand: 'openssl s_client -connect 192.168.20.10:631 -tls1_2',
+        remediationCommand: 'Web Connection bizhub > Segurança > Definições de Certificado/SSL > Versão Mínima TLS: TLS 1.2.'
+      },
+      {
+        id: 'CIS-PRN-5.1',
+        standard: 'CIS_LEVEL_1',
+        benchmarkName: 'CIS Network Device & Peripheral Benchmark v1.1 (Konica Minolta bizhub C257i)',
+        title: 'Restringir acesso por lista de controlo de IPs (IP Filtering ACL)',
+        category: 'Access Control',
+        parameter: 'Printer IP Filtering ACL',
+        currentValue: '192.168.0.0/24 e 192.168.20.0/24 autorizadas',
+        expectedValue: 'Apenas sub-redes autorizadas',
+        status: 'compliant',
+        severity: 'high',
+        cisSection: '5.1',
+        rationale: 'Impede que dispositivos fora dos segmentos LAN e VLAN 20 comuniquem com a impressora.',
+        auditCommand: 'snmpget -v3 192.168.20.10 kmIpFilterState',
+        remediationCommand: 'Web Connection bizhub > Segurança > Filtro IP > Ativar e autorizar exclusivamente 192.168.0.0/24 e 192.168.20.0/24.'
       }
     ];
   } else {

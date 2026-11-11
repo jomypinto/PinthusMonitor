@@ -113,7 +113,46 @@ class NexusApiService {
     };
   }
 
+  public async createDevice(device: Partial<NetworkDevice>): Promise<ApiResponse<NetworkDevice>> {
+    try {
+      const json = await safeFetchJson<{ success: boolean; device: NetworkDevice; error?: string }>('/api/devices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(device)
+      });
+      if (json && json.success && json.device) {
+        return {
+          success: true,
+          data: json.device,
+          timestamp: new Date().toISOString(),
+          source: 'live_flask_api'
+        };
+      }
+      throw new Error(json?.error || 'Erro ao adicionar dispositivo.');
+    } catch (err: any) {
+      throw new Error(err.message || 'Falha de comunicação ao adicionar dispositivo.');
+    }
+  }
+
   public async updateDevice(id: string, updates: Partial<NetworkDevice>): Promise<ApiResponse<NetworkDevice>> {
+    try {
+      const json = await safeFetchJson<{ success: boolean; device: NetworkDevice; error?: string }>(`/api/devices/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+      if (json && json.success && json.device) {
+        return {
+          success: true,
+          data: json.device,
+          timestamp: new Date().toISOString(),
+          source: 'live_flask_api'
+        };
+      }
+    } catch (e) {
+      console.error('Error updating device:', e);
+    }
+
     const res = await this.getDevices();
     const dev = res.data.find(d => d.id === id);
     const updated = dev ? { ...dev, ...updates } : ({} as NetworkDevice);
@@ -124,6 +163,56 @@ class NexusApiService {
       timestamp: new Date().toISOString(),
       source: 'live_flask_api'
     };
+  }
+
+  public async deleteDevice(id: string): Promise<ApiResponse<{ deletedId: string }>> {
+    try {
+      const json = await safeFetchJson<{ success: boolean; deletedId: string; error?: string }>(`/api/devices/${encodeURIComponent(id)}`, {
+        method: 'DELETE'
+      });
+      if (json && json.success) {
+        return {
+          success: true,
+          data: { deletedId: json.deletedId },
+          timestamp: new Date().toISOString(),
+          source: 'live_flask_api'
+        };
+      }
+      throw new Error(json?.error || 'Erro ao remover dispositivo.');
+    } catch (err: any) {
+      throw new Error(err.message || 'Falha de comunicação ao remover dispositivo.');
+    }
+  }
+
+  public async importDevices(payload: { devices?: any[]; rawText?: string }): Promise<{
+    success: boolean;
+    importedCount: number;
+    rejectedCount: number;
+    importedList: any[];
+    rejectedList: any[];
+    totalDevices: number;
+  }> {
+    try {
+      const json = await safeFetchJson<{
+        success: boolean;
+        importedCount: number;
+        rejectedCount: number;
+        importedList: any[];
+        rejectedList: any[];
+        totalDevices: number;
+        error?: string;
+      }>('/api/devices/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (json && json.success) {
+        return json;
+      }
+      throw new Error(json?.error || 'Falha ao importar dispositivos.');
+    } catch (err: any) {
+      throw new Error(err.message || 'Falha de comunicação ao importar dispositivos.');
+    }
   }
 
   // --- Real ICMP Ping Probe Utility ---
@@ -346,6 +435,27 @@ class NexusApiService {
 
   public getActiveScanJob(): DiscoveryScanJob | null {
     return this.activeScanJob;
+  }
+
+  public async triggerDiscoveryScan(payload: StartScanPayload): Promise<{
+    success: boolean;
+    totalProbed: number;
+    discoveredHosts: number;
+    discovered: NetworkDevice[];
+    logs: any[];
+  }> {
+    const res = await safeFetchJson<{
+      success: boolean;
+      totalProbed: number;
+      discoveredHosts: number;
+      discovered: NetworkDevice[];
+      logs: any[];
+    }>('/api/discovery/scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    return res || { success: false, totalProbed: 0, discoveredHosts: 0, discovered: [], logs: [] };
   }
 
   public startDiscoveryScan(
